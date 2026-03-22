@@ -1,0 +1,274 @@
+name: Comprehensive Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  frontend-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+    
+    - name: Run frontend unit tests
+      run: |
+        cd frontend
+        npm run test -- --run --coverage
+    
+    - name: Run frontend performance tests
+      run: |
+        cd frontend
+        npm run test:performance -- --run
+    
+    - name: Run visual regression tests
+      run: |
+        cd frontend
+        npm run test:visual -- --run
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        directory: frontend/coverage
+
+  backend-tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpassword
+          MYSQL_DATABASE: asteroid_spectral_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Setup test database
+      run: |
+        mysql -h 127.0.0.1 -u root -ptestpassword -e "CREATE DATABASE IF NOT EXISTS asteroid_spectral_test;"
+    
+    - name: Run backend unit tests
+      run: |
+        cd backend
+        python -m pytest tests/ -v --cov=app --cov-report=xml
+      env:
+        DATABASE_URL: mysql://root:testpassword@127.0.0.1:3306/asteroid_spectral_test
+    
+    - name: Run integration tests
+      run: |
+        cd backend
+        python -m pytest test_api_integration.py test_spectral_integration.py -v
+      env:
+        DATABASE_URL: mysql://root:testpassword@127.0.0.1:3306/asteroid_spectral_test
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        directory: backend
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, backend-tests]
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpassword
+          MYSQL_DATABASE: asteroid_spectral_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        cd frontend && npm ci
+        cd ../backend && pip install -r requirements.txt
+    
+    - name: Setup test database
+      run: |
+        mysql -h 127.0.0.1 -u root -ptestpassword -e "CREATE DATABASE IF NOT EXISTS asteroid_spectral_test;"
+    
+    - name: Start backend service
+      run: |
+        cd backend
+        python app.py &
+        sleep 10
+      env:
+        DATABASE_URL: mysql://root:testpassword@127.0.0.1:3306/asteroid_spectral_test
+        FLASK_ENV: testing
+    
+    - name: Start frontend service
+      run: |
+        cd frontend
+        npm run build
+        npm run preview &
+        sleep 10
+    
+    - name: Run Cypress E2E tests
+      uses: cypress-io/github-action@v6
+      with:
+        working-directory: frontend
+        wait-on: 'http://localhost:3000, http://localhost:5000/api/classifications'
+        wait-on-timeout: 120
+        browser: chrome
+        headless: true
+    
+    - name: Upload Cypress screenshots
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: cypress-screenshots
+        path: frontend/cypress/screenshots
+    
+    - name: Upload Cypress videos
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: cypress-videos
+        path: frontend/cypress/videos
+
+  load-tests:
+    runs-on: ubuntu-latest
+    needs: [e2e-tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpassword
+          MYSQL_DATABASE: asteroid_spectral_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Setup test database
+      run: |
+        mysql -h 127.0.0.1 -u root -ptestpassword -e "CREATE DATABASE IF NOT EXISTS asteroid_spectral_test;"
+    
+    - name: Start backend service
+      run: |
+        cd backend
+        python app.py &
+        sleep 10
+      env:
+        DATABASE_URL: mysql://root:testpassword@127.0.0.1:3306/asteroid_spectral_test
+        FLASK_ENV: testing
+    
+    - name: Run load tests
+      run: |
+        cd backend
+        python -m pytest tests/test_load_performance.py -v -s
+    
+    - name: Run Locust load tests
+      run: |
+        cd backend
+        locust -f locustfile.py --host=http://localhost:5000 --headless -u 20 -r 4 -t 60s --html=load_test_report.html
+    
+    - name: Upload load test report
+      uses: actions/upload-artifact@v3
+      with:
+        name: load-test-report
+        path: backend/load_test_report.html
+
+  security-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  test-report:
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, backend-tests, e2e-tests, load-tests]
+    if: always()
+    
+    steps:
+    - name: Generate test report
+      run: |
+        echo "# Test Suite Results" > test_report.md
+        echo "" >> test_report.md
+        echo "## Summary" >> test_report.md
+        echo "- Frontend Tests: ${{ needs.frontend-tests.result }}" >> test_report.md
+        echo "- Backend Tests: ${{ needs.backend-tests.result }}" >> test_report.md
+        echo "- E2E Tests: ${{ needs.e2e-tests.result }}" >> test_report.md
+        echo "- Load Tests: ${{ needs.load-tests.result }}" >> test_report.md
+        echo "" >> test_report.md
+        echo "Generated: $(date)" >> test_report.md
+    
+    - name: Upload test report
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-report
+        path: test_report.md

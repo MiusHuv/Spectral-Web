@@ -1,0 +1,421 @@
+/* Error Recovery Component Styles */
+.error-recovery {
+  background: var(--bg-primary);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin: var(--space-lg) 0;
+  box-shadow: var(--shadow-md);
+}
+
+/* Header Section */
+.error-recovery-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.error-icon {
+  font-size: 48px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.error-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.error-title {
+  margin: 0 0 var(--space-md) 0;
+  font-size: var(--font-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-error);
+  line-height: var(--leading-tight);
+}
+
+.error-description {
+  margin: 0 0 var(--space-md) 0;
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+
+.error-message {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+  font-style: italic;
+  padding: var(--space-sm);
+  background: var(--color-error-light);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-error);
+}
+
+/* Action Suggestion */
+.action-suggestion {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.action-suggestion h4 {
+  margin: 0 0 var(--space-sm) 0;
+  font-size: var(--font-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.action-suggestion p {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+
+/* Primary Actions */
+.primary-actions {
+  display: flex;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+  flex-wrap: wrap;
+}
+
+.retry-button,
+.cancel-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  font-size: var(--font-base);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  border: 1px solid transparent;
+  text-decoration: none;
+  white-space: nowrap;
+  min-height: 44px;
+}
+
+.retry-button {
+  background: var(--color-primary);
+  color: var(--text-inverse);
+  border-color: var(--color-primary);
+}
+
+.retry-button:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.retry-button:active {
+  transform: translateY(0);
+}
+
+.retry-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.retry-button.loading {
+  position: relative;
+}
+
+.cancel-button {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+
+.cancel-button:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.cancel-button:active {
+  transform: translateY(0);
+}
+
+/* Recovery Suggestions */
+.recovery-suggestions {
+  border-top: 1px solid var(--border-light);
+  padding-top: var(--space-xl);
+  margin-bottom: var(--space-xl);
+}
+
+.recovery-suggestions h4 {
+  margin: 0 0 var(--space-lg) 0;
+  font-size: var(--font-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.suggestions-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-normal);
+}
+
+.suggestion-item:hover {
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-sm);
+}
+
+.suggestion-item.priority-high {
+  border-left: 4px solid var(--color-success);
+}
+
+.suggestion-item.priority-medium {
+  border-left: 4px solid var(--color-warning);
+}
+
+.suggestion-item.priority-low {
+  border-left: 4px solid var(--color-info);
+}
+
+.suggestion-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.suggestion-action {
+  margin: 0 0 var(--space-xs) 0;
+  font-size: var(--font-base);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.suggestion-description {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+
+.suggestion-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--color-primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  white-space: nowrap;
+}
+
+.suggestion-button:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+.suggestion-button:active {
+  transform: translateY(0);
+}
+
+.suggestion-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.suggestion-button.loading {
+  position: relative;
+}
+
+/* Technical Details */
+.technical-details {
+  border-top: 1px solid var(--border-light);
+  padding-top: var(--space-lg);
+  margin-top: var(--space-xl);
+}
+
+.technical-details summary {
+  font-size: var(--font-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-normal);
+}
+
+.technical-details summary:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.details-content {
+  margin-top: var(--space-md);
+  padding: var(--space-lg);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  font-family: 'Courier New', monospace;
+  font-size: var(--font-xs);
+}
+
+.detail-item {
+  margin-bottom: var(--space-sm);
+  color: var(--text-secondary);
+}
+
+.detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.detail-item strong {
+  color: var(--text-primary);
+  margin-right: var(--space-sm);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .error-recovery {
+    padding: var(--space-lg);
+  }
+  
+  .error-recovery-header {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--space-md);
+  }
+  
+  .error-icon {
+    font-size: 36px;
+    align-self: center;
+  }
+  
+  .primary-actions {
+    flex-direction: column;
+  }
+  
+  .retry-button,
+  .cancel-button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .suggestion-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-md);
+  }
+  
+  .suggestion-button {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .error-recovery {
+    padding: var(--space-md);
+  }
+  
+  .error-title {
+    font-size: var(--font-lg);
+  }
+  
+  .error-description,
+  .action-suggestion p {
+    font-size: var(--font-sm);
+  }
+  
+  .suggestion-item {
+    padding: var(--space-md);
+  }
+  
+  .details-content {
+    padding: var(--space-md);
+    font-size: 10px;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .error-recovery {
+    border-color: var(--color-error-dark);
+  }
+  
+  .error-message {
+    background: rgba(239, 68, 68, 0.1);
+  }
+  
+  .suggestion-item.priority-high {
+    border-left-color: var(--color-success-light);
+  }
+  
+  .suggestion-item.priority-medium {
+    border-left-color: var(--color-warning-light);
+  }
+  
+  .suggestion-item.priority-low {
+    border-left-color: var(--color-info-light);
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .error-recovery {
+    border-width: 2px;
+  }
+  
+  .suggestion-item {
+    border-width: 2px;
+  }
+  
+  .retry-button,
+  .cancel-button,
+  .suggestion-button {
+    border-width: 2px;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .retry-button:hover,
+  .cancel-button:hover,
+  .suggestion-button:hover {
+    transform: none;
+  }
+  
+  .suggestion-item {
+    transition: none;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .error-recovery {
+    box-shadow: none;
+    border: 1px solid #000;
+  }
+  
+  .primary-actions,
+  .suggestion-button {
+    display: none;
+  }
+}

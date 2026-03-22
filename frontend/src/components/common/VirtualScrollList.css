@@ -1,0 +1,110 @@
+.virtual-scroll-container {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.virtual-scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.virtual-scroll-container::-webkit-scrollbar-track {
+  background: var(--color-background-secondary, #f5f5f5);
+  border-radius: 4px;
+}
+
+.virtual-scroll-container::-webkit-scrollbar-thumb {
+  background: var(--color-border, #ccc);
+  border-radius: 4px;
+}
+
+.virtual-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover, #999);
+}
+
+.virtual-scroll-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Smooth scrolling for better UX */
+.virtual-scroll-container {
+  scroll-behavior: smooth;
+}
+
+/* Performance optimizations */
+.virtual-scroll-container * {
+  will-change: transform;
+}
+
+/* Ensure proper rendering on different devices */
+@media (max-width: 768px) {
+  .virtual-scroll-container::-webkit-scrollbar {
+    width: 6px;
+  }
+}/* Load M
+ore functionality styles */
+.virtual-scroll-load-more {
+  border-top: 1px solid var(--color-border, #e0e0e0);
+  background-color: var(--color-background-secondary, #fafafa);
+}
+
+.load-more-default {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.load-more-button {
+  padding: 8px 16px;
+  background-color: var(--color-primary, #007bff);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+  font-family: inherit;
+}
+
+.load-more-button:hover:not(:disabled) {
+  background-color: var(--color-primary-hover, #0056b3);
+}
+
+.load-more-button:disabled {
+  background-color: var(--color-disabled, #6c757d);
+  cursor: not-allowed;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted, #6c757d);
+  font-size: 14px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border, #e0e0e0);
+  border-top: 2px solid var(--color-primary, #007bff);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments for load more */
+@media (max-width: 768px) {
+  .load-more-button {
+    padding: 10px 20px;
+    font-size: 16px;
+  }
+}

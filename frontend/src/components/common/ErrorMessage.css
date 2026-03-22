@@ -1,0 +1,434 @@
+/* Enhanced Error Message Component with Responsive Design */
+.error-container {
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  margin: var(--space-lg) 0;
+  border: 1px solid;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Error type variants */
+.error-container.error {
+  background-color: var(--color-error-light);
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.error-container.warning {
+  background-color: var(--color-warning-light);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+.error-container.info {
+  background-color: var(--color-info-light);
+  border-color: var(--color-info);
+  color: var(--color-info);
+}
+
+.error-container.success {
+  background-color: var(--color-success-light);
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+/* Severity indicators */
+.error-container.critical {
+  border-width: 2px;
+  box-shadow: var(--shadow-md);
+}
+
+.error-container.critical::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-error), var(--color-warning));
+}
+
+/* Content layout */
+.error-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+
+.error-icon {
+  font-size: var(--font-xl);
+  flex-shrink: 0;
+  margin-top: 2px;
+  opacity: 0.8;
+}
+
+.error-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.error-title {
+  margin: 0 0 var(--space-sm) 0;
+  font-weight: var(--font-semibold);
+  font-size: var(--font-lg);
+  line-height: var(--leading-tight);
+}
+
+.error-message {
+  margin: 0 0 var(--space-lg) 0;
+  line-height: var(--leading-normal);
+  font-size: var(--font-base);
+  word-wrap: break-word;
+}
+
+.error-message:last-child {
+  margin-bottom: 0;
+}
+
+/* Error details (collapsible) */
+.error-details {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid currentColor;
+  opacity: 0.7;
+}
+
+.error-details-toggle {
+  background: none;
+  border: none;
+  color: currentColor;
+  cursor: pointer;
+  font-size: var(--font-sm);
+  text-decoration: underline;
+  padding: 0;
+  margin-bottom: var(--space-sm);
+  transition: opacity var(--transition-normal);
+}
+
+.error-details-toggle:hover {
+  opacity: 0.8;
+}
+
+.error-details-content {
+  font-family: 'Courier New', monospace;
+  font-size: var(--font-xs);
+  background: rgba(0, 0, 0, 0.1);
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Action buttons */
+.error-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.retry-button,
+.dismiss-button,
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-sm);
+  font-weight: var(--font-medium);
+  transition: all var(--transition-normal);
+  border: 1px solid transparent;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.retry-button {
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+  border-color: var(--color-primary);
+}
+
+.retry-button:hover:not(:disabled) {
+  background-color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.retry-button:active {
+  transform: translateY(0);
+}
+
+.retry-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.dismiss-button {
+  background-color: transparent;
+  color: currentColor;
+  border-color: currentColor;
+}
+
+.dismiss-button:hover {
+  background-color: currentColor;
+  color: var(--text-inverse);
+}
+
+.action-button {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+
+.action-button:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-dark);
+}
+
+/* Dismissible error */
+.error-container.dismissible {
+  padding-right: var(--space-5xl);
+}
+
+.error-dismiss {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  background: none;
+  border: none;
+  color: currentColor;
+  cursor: pointer;
+  font-size: var(--font-lg);
+  padding: var(--space-xs);
+  border-radius: var(--radius-sm);
+  opacity: 0.6;
+  transition: all var(--transition-normal);
+  line-height: 1;
+}
+
+.error-dismiss:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Toast-style errors */
+.error-container.toast {
+  position: fixed;
+  top: var(--space-xl);
+  right: var(--space-xl);
+  z-index: var(--z-modal);
+  max-width: 400px;
+  margin: 0;
+  box-shadow: var(--shadow-xl);
+  animation: slideInRight 0.3s ease-out;
+}
+
+.error-container.toast.removing {
+  animation: slideOutRight 0.3s ease-in forwards;
+}
+
+/* Inline errors (for forms) */
+.error-container.inline {
+  margin: var(--space-xs) 0;
+  padding: var(--space-sm);
+  font-size: var(--font-sm);
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+
+.error-container.inline .error-content {
+  gap: var(--space-sm);
+}
+
+.error-container.inline .error-icon {
+  font-size: var(--font-base);
+}
+
+/* Loading state for retry button */
+.retry-button.loading {
+  position: relative;
+  color: transparent;
+}
+
+.retry-button.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .error-container {
+    padding: var(--space-md);
+    margin: var(--space-md) 0;
+  }
+  
+  .error-content {
+    gap: var(--space-sm);
+  }
+  
+  .error-icon {
+    font-size: var(--font-lg);
+  }
+  
+  .error-title {
+    font-size: var(--font-base);
+  }
+  
+  .error-message {
+    font-size: var(--font-sm);
+  }
+  
+  .error-actions {
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+  
+  .retry-button,
+  .dismiss-button,
+  .action-button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .error-container.toast {
+    top: var(--space-md);
+    right: var(--space-md);
+    left: var(--space-md);
+    max-width: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .error-container {
+    padding: var(--space-sm);
+    margin: var(--space-sm) 0;
+  }
+  
+  .error-container.dismissible {
+    padding-right: var(--space-4xl);
+  }
+  
+  .error-dismiss {
+    top: var(--space-xs);
+    right: var(--space-xs);
+  }
+  
+  .error-details-content {
+    font-size: 10px;
+    max-height: 150px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .error-container.error {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-color: var(--color-error);
+  }
+  
+  .error-container.warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    border-color: var(--color-warning);
+  }
+  
+  .error-container.info {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-color: var(--color-info);
+  }
+  
+  .error-container.success {
+    background-color: rgba(16, 185, 129, 0.1);
+    border-color: var(--color-success);
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .error-container {
+    border-width: 2px;
+  }
+  
+  .retry-button,
+  .dismiss-button,
+  .action-button {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .error-container.toast {
+    animation: none;
+  }
+  
+  .error-container.toast.removing {
+    animation: none;
+    opacity: 0;
+  }
+  
+  .retry-button.loading::after {
+    animation: none;
+  }
+  
+  .retry-button:hover {
+    transform: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .error-container.toast {
+    position: static;
+    box-shadow: none;
+  }
+  
+  .error-actions {
+    display: none;
+  }
+}

@@ -1,0 +1,18 @@
+# Production requirements - optimized for deployment
+Flask==3.0.0
+Flask-CORS==4.0.0
+Flask-RESTful==0.3.10
+Flask-Caching==2.1.0
+python-dotenv==1.0.0
+PyMySQL==1.1.0
+numpy==1.24.3
+pandas==2.0.3
+gunicorn==21.2.0
+redis==5.0.1
+
+# Production monitoring and logging
+sentry-sdk[flask]==1.38.0
+prometheus-flask-exporter==0.23.0
+
+# Security
+cryptography==41.0.7

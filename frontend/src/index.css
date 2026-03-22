@@ -1,0 +1,173 @@
+/* Import design system styles */
+@import './styles/variables.css';
+@import './styles/utilities.css';
+@import './styles/layout.css';
+@import './styles/enhancements.css';
+
+/* Root styles with design system integration */
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  line-height: var(--leading-normal);
+  font-weight: var(--font-normal);
+  
+  color-scheme: light dark;
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Base body styles */
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--font-base);
+  line-height: var(--leading-normal);
+}
+
+/* Root container */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* Base heading styles */
+h1 {
+  font-size: var(--font-3xl);
+  line-height: var(--leading-tight);
+  font-weight: var(--font-bold);
+  margin: 0 0 var(--space-xl) 0;
+  color: var(--text-primary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  body {
+    font-size: var(--font-sm);
+  }
+  
+  h1 {
+    font-size: var(--font-2xl);
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    min-width: 280px;
+  }
+  
+  h1 {
+    font-size: var(--font-xl);
+  }
+}
+
+/* Ensure consistent box-sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Remove default margins and paddings from common elements */
+h1, h2, h3, h4, h5, h6,
+p, ul, ol, li,
+figure, blockquote,
+dl, dd {
+  margin: 0;
+  padding: 0;
+}
+
+/* List styles */
+ul, ol {
+  list-style: none;
+}
+
+/* Image styles */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Table styles */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+/* Form element consistency */
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Remove button default styles */
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Focus styles for accessibility */
+:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --border-light: var(--color-gray-900);
+    --border-medium: var(--color-gray-900);
+    --border-dark: var(--color-gray-900);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  :root {
+    color-scheme: light;
+    color: black;
+    background-color: white;
+  }
+  
+  body {
+    background-color: white;
+    color: black;
+    font-size: 12pt;
+    line-height: 1.4;
+  }
+  
+  h1 {
+    font-size: 18pt;
+  }
+}

@@ -1,0 +1,378 @@
+.enhanced-error-boundary {
+  width: 100%;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.error-container {
+  max-width: 600px;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.error-header {
+  padding: 24px 24px 16px;
+  text-align: center;
+  background: linear-gradient(135deg, #fef3f2 0%, #fde2e2 100%);
+  border-bottom: 1px solid #fecaca;
+}
+
+.error-title {
+  margin: 0 0 8px 0;
+  color: #dc2626;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.error-subtitle {
+  margin: 0;
+  color: #7f1d1d;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.error-actions {
+  padding: 20px 24px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  background: #ffffff;
+}
+
+.error-btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.retry-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.retry-btn:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.reload-btn {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.reload-btn:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.diagnostics-btn {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.diagnostics-btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.error-diagnostics {
+  padding: 0 24px 20px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.diagnostics-details {
+  margin-top: 16px;
+}
+
+.diagnostics-summary {
+  padding: 12px 16px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #374151;
+  transition: all 0.2s ease;
+  list-style: none;
+}
+
+.diagnostics-summary:hover {
+  background: #e5e7eb;
+}
+
+.diagnostics-summary::-webkit-details-marker {
+  display: none;
+}
+
+.diagnostics-summary::marker {
+  display: none;
+}
+
+.diagnostics-content {
+  margin-top: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.diagnostics-section {
+  padding: 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.diagnostics-section:last-child {
+  border-bottom: none;
+}
+
+.diagnostics-section h4 {
+  margin: 0 0 12px 0;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.diagnostics-item {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.diagnostics-item:last-child {
+  margin-bottom: 0;
+}
+
+.diagnostics-item strong {
+  color: #374151;
+  display: inline-block;
+  min-width: 120px;
+}
+
+.component-stack {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #495057;
+  max-height: 300px;
+  overflow: auto;
+  white-space: pre-wrap;
+  margin: 0;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+}
+
+.error-footer {
+  padding: 16px 24px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.error-help {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .enhanced-error-boundary {
+    padding: 16px;
+  }
+
+  .error-container {
+    max-width: 100%;
+  }
+
+  .error-header {
+    padding: 20px 20px 16px;
+  }
+
+  .error-title {
+    font-size: 20px;
+  }
+
+  .error-subtitle {
+    font-size: 14px;
+  }
+
+  .error-actions {
+    padding: 16px 20px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .error-btn {
+    min-width: auto;
+  }
+
+  .error-diagnostics {
+    padding: 0 20px 16px;
+  }
+
+  .diagnostics-section {
+    padding: 12px;
+  }
+
+  .component-stack {
+    font-size: 10px;
+    max-height: 200px;
+  }
+
+  .error-footer {
+    padding: 12px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .enhanced-error-boundary {
+    padding: 12px;
+  }
+
+  .error-header {
+    padding: 16px 16px 12px;
+  }
+
+  .error-title {
+    font-size: 18px;
+  }
+
+  .error-subtitle {
+    font-size: 13px;
+  }
+
+  .error-actions {
+    padding: 12px 16px;
+    gap: 8px;
+  }
+
+  .error-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .error-diagnostics {
+    padding: 0 16px 12px;
+  }
+
+  .diagnostics-section {
+    padding: 10px;
+  }
+
+  .component-stack {
+    font-size: 9px;
+    padding: 8px;
+  }
+
+  .error-footer {
+    padding: 10px 16px;
+  }
+
+  .error-help {
+    font-size: 12px;
+  }
+}
+
+/* Animation for error appearance */
+.error-container {
+  animation: errorSlideIn 0.3s ease-out;
+}
+
+@keyframes errorSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .error-container {
+    border-width: 2px;
+  }
+
+  .error-title {
+    color: #000000;
+  }
+
+  .error-subtitle {
+    color: #000000;
+  }
+
+  .error-btn {
+    border-width: 2px;
+  }
+
+  .diagnostics-content {
+    border-width: 2px;
+  }
+
+  .component-stack {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .error-container {
+    animation: none;
+  }
+
+  .error-btn,
+  .diagnostics-summary {
+    transition: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .error-actions {
+    display: none;
+  }
+
+  .error-footer {
+    display: none;
+  }
+
+  .error-header {
+    background: none;
+    border-bottom: 2px solid #000;
+  }
+
+  .error-title,
+  .error-subtitle {
+    color: #000;
+  }
+}

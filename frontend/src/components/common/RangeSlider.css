@@ -1,0 +1,140 @@
+/* RangeSlider Component Styles - Enforced Layout */
+
+/* Main container - force vertical layout */
+div.range-slider {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    margin-bottom: 20px !important;
+    margin-top: 0 !important;
+    padding: 0 0 4px 0 !important;
+    clear: both !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+    min-height: 60px !important;
+}
+
+div.range-slider:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* Label - force block display above inputs */
+div.range-slider > label.range-slider-label {
+    display: block !important;
+    width: 100% !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #374151 !important;
+    margin: 0 0 10px 0 !important;
+    padding: 0 !important;
+    line-height: 1.5 !important;
+    position: relative !important;
+    float: none !important;
+    clear: both !important;
+    box-sizing: border-box !important;
+    height: auto !important;
+    min-height: 18px !important;
+}
+
+/* Inputs container - force horizontal layout */
+div.range-slider > div.range-slider-inputs {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: relative !important;
+    float: none !important;
+    clear: both !important;
+    box-sizing: border-box !important;
+    min-height: 36px !important;
+    height: auto !important;
+}
+
+/* Input fields */
+div.range-slider-inputs > input.range-slider-input {
+    flex: 1 1 0% !important;
+    min-width: 60px !important;
+    max-width: none !important;
+    padding: 8px 6px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 4px !important;
+    font-size: 12px !important;
+    box-sizing: border-box !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    width: auto !important;
+}
+
+div.range-slider-inputs > input.range-slider-input:focus {
+    outline: none !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+div.range-slider-inputs > input.range-slider-input::placeholder {
+    color: #9ca3af !important;
+    font-size: 9px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* Separator */
+div.range-slider-inputs > span.range-slider-separator {
+    flex-shrink: 0 !important;
+    color: #6b7280 !important;
+    font-weight: 500 !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    margin: 0 2px !important;
+    padding: 0 !important;
+}
+
+/* Unit label */
+div.range-slider-inputs > span.range-slider-unit {
+    flex-shrink: 0 !important;
+    font-size: 11px !important;
+    color: #6b7280 !important;
+    white-space: nowrap !important;
+    min-width: 20px !important;
+    max-width: 30px !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    padding: 0 0 0 2px !important;
+    text-align: left !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    div.range-slider-inputs > input.range-slider-input {
+        padding: 6px 4px !important;
+        font-size: 11px !important;
+    }
+    
+    div.range-slider > label.range-slider-label {
+        font-size: 12px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    div.range-slider > div.range-slider-inputs {
+        gap: 4px !important;
+    }
+    
+    div.range-slider-inputs > input.range-slider-input {
+        padding: 6px 4px !important;
+        font-size: 10px !important;
+    }
+    
+    div.range-slider-inputs > span.range-slider-unit {
+        font-size: 10px !important;
+        min-width: 20px !important;
+    }
+}

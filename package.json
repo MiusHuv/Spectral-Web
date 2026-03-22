@@ -1,0 +1,41 @@
+{
+  "name": "asteroid-spectral-app",
+  "version": "1.0.0",
+  "description": "Asteroid spectral visualization web application",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && python app.py",
+    "build": "cd frontend && npm run build",
+    "build:prod": "cd frontend && npm run build:prod",
+    "build:staging": "cd frontend && npm run build:staging",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && pip install -r requirements.txt",
+    "test": "concurrently \"npm run test:frontend\" \"npm run test:backend\"",
+    "test:frontend": "cd frontend && npm run test",
+    "test:backend": "cd backend && python -m pytest",
+    "test:all": "cd frontend && npm run test:all && cd ../backend && python -m pytest",
+    "lint": "cd frontend && npm run lint",
+    "setup:env": "./setup-env.sh",
+    "deploy:dev": "./deploy.sh development deploy",
+    "deploy:staging": "./deploy.sh staging deploy",
+    "deploy:prod": "./deploy.sh production deploy",
+    "health:check": "./health-check.sh",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "devDependencies": {
+    "baseline-browser-mapping": "^2.9.7",
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "asteroid",
+    "spectral",
+    "visualization",
+    "react",
+    "flask"
+  ],
+  "author": "",
+  "license": "MIT"
+}

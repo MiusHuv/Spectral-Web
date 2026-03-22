@@ -1,0 +1,63 @@
+/* MainLayout using new responsive design system */
+.main-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--bg-secondary);
+}
+
+.main-content {
+  flex: 1;
+  padding: var(--space-lg);
+  max-width: var(--container-2xl);
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1280px) {
+  .main-content {
+    max-width: var(--container-xl);
+    padding: var(--space-lg);
+  }
+}
+
+@media (max-width: 1024px) {
+  .main-content {
+    max-width: var(--container-lg);
+    padding: var(--space-md);
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    max-width: var(--container-md);
+    padding: var(--space-sm);
+  }
+}
+
+@media (max-width: 640px) {
+  .main-content {
+    max-width: var(--container-sm);
+    padding: var(--space-xs);
+  }
+}
+
+/* Accessibility improvements */
+.main-content:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .main-layout {
+    min-height: auto;
+  }
+  
+  .main-content {
+    padding: 0;
+    max-width: none;
+  }
+}

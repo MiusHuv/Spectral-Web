@@ -1,0 +1,221 @@
+.export-manager {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 500px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.export-manager__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.export-manager__header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.export-manager__close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.export-manager__close:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.export-manager__content {
+  padding: 20px 24px 24px;
+}
+
+.export-manager__info {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background-color: #f8fafc;
+  border-radius: 6px;
+  border-left: 4px solid #3b82f6;
+}
+
+.export-manager__info p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.export-manager__options {
+  margin-bottom: 24px;
+}
+
+.export-option-group {
+  margin-bottom: 20px;
+}
+
+.export-option-group:last-child {
+  margin-bottom: 0;
+}
+
+.export-option-group__label {
+  display: block;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.export-option-group__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-option,
+.checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.radio-option:hover,
+.checkbox-option:hover {
+  background-color: #f8fafc;
+}
+
+.radio-option input[type="radio"],
+.checkbox-option input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.radio-option span,
+.checkbox-option span {
+  color: #374151;
+  font-size: 0.9rem;
+  user-select: none;
+}
+
+.export-manager__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.visualization-export-buttons {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.export-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  min-width: 120px;
+}
+
+.export-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.export-button--primary {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.export-button--primary:hover:not(:disabled) {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.export-button--secondary {
+  background-color: white;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.export-button--secondary:hover:not(:disabled) {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
+/* Loading spinner in button */
+.export-button .loading-spinner {
+  width: 16px;
+  height: 16px;
+}
+
+/* Error message styling within export manager */
+.export-manager .error-message {
+  margin-bottom: 16px;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .export-manager {
+    max-width: 100%;
+    margin: 0 16px;
+    max-height: 90vh;
+  }
+  
+  .export-manager__header,
+  .export-manager__content {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  
+  .visualization-export-buttons {
+    flex-direction: column;
+  }
+  
+  .export-button {
+    width: 100%;
+  }
+}
+
+/* Animation for modal appearance */
+.export-manager {
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

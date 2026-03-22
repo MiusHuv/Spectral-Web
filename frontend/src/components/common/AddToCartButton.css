@@ -1,0 +1,98 @@
+.add-to-cart-container {
+    position: relative;
+    display: inline-block;
+}
+
+.add-to-cart-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #3b82f6;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.add-to-cart-btn:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+}
+
+.add-to-cart-btn.in-cart {
+    background: #10b981;
+}
+
+.add-to-cart-btn.in-cart:hover {
+    background: #059669;
+}
+
+.add-to-cart-btn .icon {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* Size variants */
+.add-to-cart-btn.size-small {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.add-to-cart-btn.size-small .icon {
+    font-size: 14px;
+}
+
+.add-to-cart-btn.size-large {
+    padding: 10px 20px;
+    font-size: 16px;
+}
+
+.add-to-cart-btn.size-large .icon {
+    font-size: 18px;
+}
+
+/* Toast notification */
+.cart-toast {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    background: #1f2937;
+    color: white;
+    border-radius: 6px;
+    font-size: 13px;
+    white-space: nowrap;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    animation: slideDown 0.3s ease;
+    z-index: 1000;
+}
+
+.cart-toast::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid #1f2937;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}

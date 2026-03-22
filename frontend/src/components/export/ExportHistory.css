@@ -1,0 +1,242 @@
+/* Export History Component Styles */
+
+.export-history {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.export-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.export-history-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.export-history-clear-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    color: #666;
+    background: transparent;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.export-history-clear-btn:hover {
+    color: #d32f2f;
+    border-color: #d32f2f;
+    background: #ffebee;
+}
+
+/* Empty State */
+
+.export-history-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.export-history-empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.export-history-empty-text {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #666;
+}
+
+.export-history-empty-subtext {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #999;
+}
+
+/* History List */
+
+.export-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.export-history-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.export-history-item:hover {
+    background: #f5f5f5;
+    border-color: #d0d0d0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.export-history-item-icon {
+    font-size: 2rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.export-history-item-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.export-history-item-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.export-history-item-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.export-history-item-format {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #1976d2;
+    background: #e3f2fd;
+    border-radius: 4px;
+}
+
+.export-history-item-details {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.export-history-item-detail {
+    white-space: nowrap;
+}
+
+.export-history-item-separator {
+    color: #ccc;
+}
+
+.export-history-item-time {
+    color: #999;
+}
+
+.export-history-item-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.export-history-field-tag {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    color: #555;
+    background: #e8e8e8;
+    border-radius: 3px;
+}
+
+.export-history-item-actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.export-history-repeat-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #1976d2;
+    background: white;
+    border: 1px solid #1976d2;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.export-history-repeat-btn:hover {
+    color: white;
+    background: #1976d2;
+}
+
+.export-history-repeat-icon {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+/* Scrollbar Styling */
+
+.export-history::-webkit-scrollbar {
+    width: 8px;
+}
+
+.export-history::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.export-history::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+
+.export-history::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+/* Responsive Design */
+
+@media (max-width: 768px) {
+    .export-history-item {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .export-history-item-icon {
+        font-size: 1.5rem;
+    }
+    
+    .export-history-item-details {
+        flex-wrap: wrap;
+    }
+    
+    .export-history-item-actions {
+        width: 100%;
+    }
+    
+    .export-history-repeat-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

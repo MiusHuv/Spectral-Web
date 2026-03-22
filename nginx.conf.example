@@ -1,0 +1,91 @@
+# Nginx configuration for Asteroid Spectral App
+# 将此文件复制到 /etc/nginx/sites-available/asteroid-spectral-app
+# 然后创建符号链接: sudo ln -s /etc/nginx/sites-available/asteroid-spectral-app /etc/nginx/sites-enabled/
+
+server {
+    listen 80;
+    server_name yourdomain.com www.yourdomain.com;
+    
+    # 如果使用 HTTPS，取消注释以下行并配置 SSL
+    # listen 443 ssl http2;
+    # ssl_certificate /path/to/cert.pem;
+    # ssl_certificate_key /path/to/key.pem;
+    
+    # 日志文件
+    access_log /var/log/nginx/asteroid-spectral-access.log;
+    error_log /var/log/nginx/asteroid-spectral-error.log;
+    
+    # 客户端最大上传大小
+    client_max_body_size 20M;
+    
+    # 前端静态文件
+    location / {
+        root /var/www/asteroid-spectral-app/frontend/dist;
+        try_files $uri $uri/ /index.html;
+        
+        # 缓存静态资源
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+        
+        # 不缓存 HTML 文件
+        location ~* \.html$ {
+            expires -1;
+            add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+        }
+    }
+    
+    # 后端 API 代理
+    location /api {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        
+        # 代理头设置
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        
+        # 超时设置（支持大文件导出）
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+        
+        # 缓冲设置
+        proxy_buffering off;
+        proxy_request_buffering off;
+    }
+    
+    # 健康检查端点
+    location /health {
+        proxy_pass http://127.0.0.1:5000/health;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        access_log off;
+    }
+    
+    # Gzip 压缩
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css text/xml text/javascript 
+               application/javascript application/json application/xml+rss 
+               application/atom+xml image/svg+xml;
+    
+    # 安全头
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+}
+
+# HTTP 到 HTTPS 重定向（如果使用 HTTPS）
+# server {
+#     listen 80;
+#     server_name yourdomain.com www.yourdomain.com;
+#     return 301 https://$server_name$request_uri;
+# }

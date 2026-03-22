@@ -1,0 +1,12 @@
+.spectrum-chart-container {
+    width: 100%;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.spectrum-chart-canvas {
+    width: 100%;
+    display: block;
+}
