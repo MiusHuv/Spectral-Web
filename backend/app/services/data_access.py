@@ -1,9 +1,6 @@
 """
-Data access layer that utilizes existing data_loader.py functions.
-Provides high-level data access methods for the Flask application.
+Data access layer for high-level asteroid and spectral data operations.
 """
-import os
-import sys
 import logging
 import time
 from typing import Optional, Dict, Any, List, Tuple
@@ -16,19 +13,6 @@ from app.utils.cache import (
     invalidate_cache_by_data_change
 )
 from app.utils.query_streaming import QueryStreamer, get_performance_monitor
-
-# Add clustering pipeline to path for imports
-# Go up from backend/app/services/data_access.py to the root directory
-current_dir = os.path.dirname(os.path.abspath(__file__))  # services
-app_dir = os.path.dirname(current_dir)  # app
-backend_dir = os.path.dirname(app_dir)  # backend
-project_dir = os.path.dirname(backend_dir)  # asteroid-spectral-app
-root_dir = os.path.dirname(project_dir)  # root (where clustering_pipeline is)
-clustering_pipeline_path = os.path.join(root_dir, 'clustering_pipeline')
-if clustering_pipeline_path not in sys.path:
-    sys.path.insert(0, clustering_pipeline_path)
-
-from utils.data_loader import load_spectral_data
 from .database_service import get_database_service
 
 logger = logging.getLogger(__name__)
