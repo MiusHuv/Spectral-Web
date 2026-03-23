@@ -2,9 +2,9 @@ name: Comprehensive Test Suite
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ master, main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ master, main ]
 
 jobs:
   frontend-tests:
@@ -175,7 +175,7 @@ jobs:
   load-tests:
     runs-on: ubuntu-latest
     needs: [e2e-tests]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
     
     services:
       mysql:
