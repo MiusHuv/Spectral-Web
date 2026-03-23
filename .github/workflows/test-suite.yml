@@ -33,7 +33,7 @@ jobs:
     - name: Run frontend unit tests
       run: |
         cd frontend
-        npm run test -- --run --coverage
+        npm run test:ci
     
     - name: Run frontend performance tests
       run: |

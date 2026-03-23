@@ -39,6 +39,9 @@ export default defineConfig(({ command, mode }) => {
       globals: true,
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',
+      coverage: {
+        provider: 'v8',
+      },
     },
   }
 })
