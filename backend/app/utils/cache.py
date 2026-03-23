@@ -230,6 +230,13 @@ class QueryCache:
         """Get cached query result."""
         key = self._generate_query_key(query, params)
         return self.cache.get(key)
+
+    def invalidate_query(self, query: str, params: Optional[tuple] = None) -> bool:
+        """Invalidate a specific cached query result."""
+        key = self._generate_query_key(query, params)
+        removed = self.cache.delete(key)
+        self._query_index.pop(key, None)
+        return removed
     
     def cache_query_result(self, query: str, params: Optional[tuple], result: Any, ttl: Optional[int] = None) -> None:
         """Cache query result."""

@@ -15,149 +15,149 @@ from pymysql.cursors import DictCursor
 from app.utils.cache import get_query_cache, cache_query
 
 logger = logging.getLogger(__name__)
+logger.info("Using built-in database helpers backend")
 
-_USE_EXTERNAL_DB_UTILS = False
+class DatabaseManager:
+    """Minimal database manager compatible with FlaskDatabaseService."""
 
-if _USE_EXTERNAL_DB_UTILS:
-    from utils.database_utils import DatabaseManager, SpectralDataLoader
-    logger.info("Using external utils.database_utils backend")
-else:
-    logger.info("Using built-in database helpers backend")
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config or {}
 
-    class DatabaseManager:
-        """Minimal database manager compatible with FlaskDatabaseService."""
+    def _connect(self):
+        host = self.config.get('host', '127.0.0.1')
+        if host in ('localhost', '::1'):
+            # Prefer TCP loopback to avoid environment-specific socket resolution issues.
+            host = '127.0.0.1'
+        return pymysql.connect(
+            host=host,
+            port=int(self.config.get('port', 3306)),
+            user=self.config.get('user', 'root'),
+            password=self.config.get('password', ''),
+            database=self.config.get('database'),
+            charset=self.config.get('charset', 'utf8mb4'),
+            autocommit=bool(self.config.get('autocommit', True)),
+            connect_timeout=int(self.config.get('connect_timeout', 5)),
+            cursorclass=DictCursor
+        )
 
-        def __init__(self, config: Dict[str, Any]):
-            self.config = config or {}
-
-        def _connect(self):
-            host = self.config.get('host', '127.0.0.1')
-            if host in ('localhost', '::1'):
-                # Prefer TCP loopback to avoid environment-specific socket resolution issues.
-                host = '127.0.0.1'
-            return pymysql.connect(
-                host=host,
-                port=int(self.config.get('port', 3306)),
-                user=self.config.get('user', 'root'),
-                password=self.config.get('password', ''),
-                database=self.config.get('database'),
-                charset=self.config.get('charset', 'utf8mb4'),
-                autocommit=bool(self.config.get('autocommit', True)),
-                connect_timeout=int(self.config.get('connect_timeout', 5)),
-                cursorclass=DictCursor
-            )
-
-        def test_connection(self) -> bool:
-            conn = None
-            try:
-                conn = self._connect()
-                return True
-            except Exception as exc:
-                logger.error(f"Database connection test failed: {exc}")
-                return False
-            finally:
-                if conn is not None:
-                    conn.close()
-
-        def get_connection(self):
-            return self._connect()
-
-        def execute_query(self, query: str, params: Optional[tuple] = None) -> pd.DataFrame:
+    def test_connection(self) -> bool:
+        conn = None
+        try:
             conn = self._connect()
-            try:
-                return pd.read_sql(query, conn, params=params)
-            finally:
+            return True
+        except Exception as exc:
+            logger.error(f"Database connection test failed: {exc}")
+            return False
+        finally:
+            if conn is not None:
                 conn.close()
 
-    class SpectralDataLoader:
-        """Minimal spectral parser/normalizer used by API tests and CI."""
+    def get_connection(self):
+        return self._connect()
 
-        def __init__(self, _db_manager: DatabaseManager, config: Optional[Dict[str, Any]] = None):
-            config = config or {}
-            wl_range = config.get('wavelength_range', [0.45, 2.45])
-            resolution = float(config.get('wavelength_resolution', 0.005))
-            self.common_wavelength_grid = np.arange(wl_range[0], wl_range[1] + 1e-9, resolution)
+    def execute_query(self, query: str, params: Optional[tuple] = None) -> pd.DataFrame:
+        conn = self._connect()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(query, params or ())
+                rows = cursor.fetchall()
+                columns = [desc[0] for desc in (cursor.description or [])]
+            if not columns:
+                return pd.DataFrame()
+            return pd.DataFrame(list(rows), columns=columns)
+        finally:
+            conn.close()
 
-        def _parse_spectral_data(self, spectral_data_str: str) -> Optional[np.ndarray]:
-            if not spectral_data_str:
-                return None
 
-            parsed = None
-            for parser in (json.loads, ast.literal_eval):
-                try:
-                    parsed = parser(spectral_data_str)
-                    break
-                except Exception:
-                    continue
+class SpectralDataLoader:
+    """Minimal spectral parser/normalizer used by API tests and CI."""
 
-            if parsed is None:
-                return None
+    def __init__(self, _db_manager: DatabaseManager, config: Optional[Dict[str, Any]] = None):
+        config = config or {}
+        wl_range = config.get('wavelength_range', [0.45, 2.45])
+        resolution = float(config.get('wavelength_resolution', 0.005))
+        self.common_wavelength_grid = np.arange(wl_range[0], wl_range[1] + 1e-9, resolution)
 
-            wavelengths: List[float] = []
-            reflectances: List[float] = []
+    def _parse_spectral_data(self, spectral_data_str: str) -> Optional[np.ndarray]:
+        if not spectral_data_str:
+            return None
 
-            if isinstance(parsed, dict):
-                wavelengths = parsed.get('wavelengths') or parsed.get('wavelength') or []
-                reflectances = parsed.get('reflectance') or parsed.get('reflectances') or []
-            elif isinstance(parsed, list) and parsed and isinstance(parsed[0], dict):
-                wavelengths = [point.get('wavelength') for point in parsed if 'wavelength' in point]
-                reflectances = [point.get('reflectance') for point in parsed if 'reflectance' in point]
-            elif isinstance(parsed, list):
-                reflectances = parsed
-
-            if not reflectances:
-                return None
-
-            if not wavelengths or len(wavelengths) != len(reflectances):
-                wavelengths = np.linspace(
-                    float(self.common_wavelength_grid.min()),
-                    float(self.common_wavelength_grid.max()),
-                    len(reflectances)
-                ).tolist()
-
+        parsed = None
+        for parser in (json.loads, ast.literal_eval):
             try:
-                wave_arr = np.asarray(wavelengths, dtype=float)
-                refl_arr = np.asarray(reflectances, dtype=float)
-            except (TypeError, ValueError):
-                return None
+                parsed = parser(spectral_data_str)
+                break
+            except Exception:
+                continue
 
-            if wave_arr.size == 0 or refl_arr.size == 0 or wave_arr.size != refl_arr.size:
-                return None
+        if parsed is None:
+            return None
 
-            return np.column_stack((wave_arr, refl_arr))
+        wavelengths: List[float] = []
+        reflectances: List[float] = []
 
-        def _normalize_by_055(self, spectrum: np.ndarray) -> Optional[np.ndarray]:
-            if spectrum is None or spectrum.size == 0:
-                return None
+        if isinstance(parsed, dict):
+            wavelengths = parsed.get('wavelengths') or parsed.get('wavelength') or []
+            reflectances = parsed.get('reflectance') or parsed.get('reflectances') or []
+        elif isinstance(parsed, list) and parsed and isinstance(parsed[0], dict):
+            wavelengths = [point.get('wavelength') for point in parsed if 'wavelength' in point]
+            reflectances = [point.get('reflectance') for point in parsed if 'reflectance' in point]
+        elif isinstance(parsed, list):
+            reflectances = parsed
 
-            if len(spectrum.shape) != 2 or spectrum.shape[1] < 2:
-                return None
+        if not reflectances:
+            return None
 
-            wavelengths = spectrum[:, 0]
-            reflectances = spectrum[:, 1]
+        if not wavelengths or len(wavelengths) != len(reflectances):
+            wavelengths = np.linspace(
+                float(self.common_wavelength_grid.min()),
+                float(self.common_wavelength_grid.max()),
+                len(reflectances)
+            ).tolist()
 
-            if wavelengths.size == 0 or reflectances.size == 0:
-                return None
+        try:
+            wave_arr = np.asarray(wavelengths, dtype=float)
+            refl_arr = np.asarray(reflectances, dtype=float)
+        except (TypeError, ValueError):
+            return None
 
-            sort_idx = np.argsort(wavelengths)
-            wavelengths = wavelengths[sort_idx]
-            reflectances = reflectances[sort_idx]
+        if wave_arr.size == 0 or refl_arr.size == 0 or wave_arr.size != refl_arr.size:
+            return None
 
-            resampled = np.interp(
-                self.common_wavelength_grid,
-                wavelengths,
-                reflectances,
-                left=np.nan,
-                right=np.nan
-            )
+        return np.column_stack((wave_arr, refl_arr))
 
-            norm_idx = int(np.argmin(np.abs(self.common_wavelength_grid - 0.55)))
-            norm_reflectance = resampled[norm_idx]
+    def _normalize_by_055(self, spectrum: np.ndarray) -> Optional[np.ndarray]:
+        if spectrum is None or spectrum.size == 0:
+            return None
 
-            if not np.isfinite(norm_reflectance) or norm_reflectance == 0:
-                return resampled
+        if len(spectrum.shape) != 2 or spectrum.shape[1] < 2:
+            return None
 
-            return resampled / norm_reflectance
+        wavelengths = spectrum[:, 0]
+        reflectances = spectrum[:, 1]
+
+        if wavelengths.size == 0 or reflectances.size == 0:
+            return None
+
+        sort_idx = np.argsort(wavelengths)
+        wavelengths = wavelengths[sort_idx]
+        reflectances = reflectances[sort_idx]
+
+        resampled = np.interp(
+            self.common_wavelength_grid,
+            wavelengths,
+            reflectances,
+            left=np.nan,
+            right=np.nan
+        )
+
+        norm_idx = int(np.argmin(np.abs(self.common_wavelength_grid - 0.55)))
+        norm_reflectance = resampled[norm_idx]
+
+        if not np.isfinite(norm_reflectance) or norm_reflectance == 0:
+            return resampled
+
+        return resampled / norm_reflectance
 
 class FlaskDatabaseService:
     """
@@ -230,6 +230,14 @@ class FlaskDatabaseService:
                     'filter_classes': False
                 }
             }
+            db_cfg = self._config['database']
+            logger.info(
+                "Database target configured: %s:%s/%s (user=%s)",
+                db_cfg.get('host'),
+                db_cfg.get('port'),
+                db_cfg.get('database'),
+                db_cfg.get('user')
+            )
             
             # Initialize database manager
             self.db_manager = DatabaseManager(self._config['database'])
@@ -318,13 +326,27 @@ class FlaskDatabaseService:
                 query_cache = get_query_cache()
                 cached_result = query_cache.get_query_result(query, params)
                 if cached_result is not None:
-                    cache_time = time.time() - query_start_time
-                    logger.debug(f"Cache hit for query {query_hash}: {query[:50]}... (retrieved in {cache_time:.3f}s)")
-                    return cached_result
+                    if self._looks_like_placeholder_result(cached_result):
+                        logger.warning(
+                            "Discarding placeholder-like cached result for query %s",
+                            query_hash
+                        )
+                        query_cache.invalidate_query(query, params)
+                    else:
+                        cache_time = time.time() - query_start_time
+                        logger.debug(f"Cache hit for query {query_hash}: {query[:50]}... (retrieved in {cache_time:.3f}s)")
+                        return cached_result
             
             # Execute query with performance monitoring
             result = self.db_manager.execute_query(query, params)
             if self._looks_like_placeholder_result(result):
+                preview = result.iloc[0].to_dict() if result is not None and not result.empty else {}
+                logger.error(
+                    "Placeholder-like query result detected. manager=%s query=%s preview=%s",
+                    type(self.db_manager).__name__,
+                    ' '.join(query.strip().split())[:200],
+                    preview
+                )
                 raise RuntimeError(
                     "Database returned placeholder/template rows; please verify DB connection and data source"
                 )
