@@ -72,7 +72,13 @@ class DataAccessLayer:
                 ORDER BY bus_demeo_class
             """
             bus_demeo_df = db_service.execute_query(bus_demeo_query, cache_ttl=3600)
-            bus_demeo_classes = bus_demeo_df['bus_demeo_class'].tolist() if bus_demeo_df is not None else []
+            bus_demeo_classes = []
+            if (
+                bus_demeo_df is not None
+                and not bus_demeo_df.empty
+                and 'bus_demeo_class' in bus_demeo_df.columns
+            ):
+                bus_demeo_classes = bus_demeo_df['bus_demeo_class'].tolist()
             
             # Get Tholen classes
             tholen_query = """
@@ -82,7 +88,13 @@ class DataAccessLayer:
                 ORDER BY tholen_class
             """
             tholen_df = db_service.execute_query(tholen_query, cache_ttl=3600)
-            tholen_classes = tholen_df['tholen_class'].tolist() if tholen_df is not None else []
+            tholen_classes = []
+            if (
+                tholen_df is not None
+                and not tholen_df.empty
+                and 'tholen_class' in tholen_df.columns
+            ):
+                tholen_classes = tholen_df['tholen_class'].tolist()
             
             return {
                 'systems': [
@@ -147,7 +159,15 @@ class DataAccessLayer:
             
             df = db_service.execute_query(metadata_query, cache_ttl=1800)
             if df is None or df.empty:
-                return {'classes': [], 'total_asteroids': 0, 'total_with_spectra': 0}
+                empty_result = {
+                    'system': system,
+                    'classes': [],
+                    'total_asteroids': 0,
+                    'total_with_spectra': 0,
+                    'overall_spectral_percentage': 0
+                }
+                self._multi_level_cache.set(cache_key, empty_result, promote_to_l1=True)
+                return empty_result
             
             classes = []
             total_asteroids = 0
