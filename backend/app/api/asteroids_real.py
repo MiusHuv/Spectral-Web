@@ -13,6 +13,39 @@ logger = logging.getLogger(__name__)
 asteroids_real_bp = Blueprint('asteroids_real', __name__)
 api = Api(asteroids_real_bp)
 
+
+def _safe_int(value, default: int = 0) -> int:
+    """Convert any scalar to int safely, with fallback."""
+    try:
+        if value is None:
+            return default
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _extract_count_value(df, column: str, default: int = 0) -> int:
+    """Read a count-like value from DataFrame/dict results safely."""
+    if df is None:
+        return default
+
+    try:
+        if hasattr(df, 'empty') and df.empty:
+            return default
+
+        if hasattr(df, 'columns') and column in df.columns:
+            return _safe_int(df[column].iloc[0], default)
+
+        if hasattr(df, 'iloc'):
+            return _safe_int(df.iloc[0, 0], default)
+
+        if isinstance(df, dict):
+            return _safe_int(df.get(column), default)
+    except Exception:
+        return default
+
+    return default
+
 class AsteroidsList(Resource):
     """Get list of asteroids with filtering and pagination"""
     
@@ -21,8 +54,10 @@ class AsteroidsList(Resource):
             db_service = get_database_service()
             
             # Get query parameters
-            page = int(request.args.get('page', 1))
-            page_size = int(request.args.get('page_size', 50))
+            page = _safe_int(request.args.get('page', 1), 1)
+            page_size = _safe_int(request.args.get('page_size', 50), 50)
+            page = max(page, 1)
+            page_size = min(max(page_size, 1), 500)
             bus_demeo_class = request.args.get('bus_demeo_class')
             tholen_class = request.args.get('tholen_class')
             orbital_class = request.args.get('orbital_class')
@@ -221,7 +256,7 @@ class AsteroidsList(Resource):
             # Get total count
             count_query = f"SELECT COUNT(*) as total FROM asteroids a {mission_join} {where_sql}"
             count_result = db_service.execute_query(count_query, tuple(params) if params else None)
-            total = int(count_result['total'].iloc[0]) if count_result is not None and not count_result.empty else 0
+            total = _extract_count_value(count_result, 'total', 0)
             
             # Build ORDER BY clause with NULL handling
             # Default multi-column sort for official_number
@@ -367,7 +402,7 @@ class AsteroidDetail(Resource):
                 WHERE asteroid_id = {asteroid_id}
             """
             obs_count_df = db_service.execute_query(obs_count_query)
-            asteroid['observation_count'] = int(obs_count_df['count'].iloc[0]) if obs_count_df is not None else 0
+            asteroid['observation_count'] = _extract_count_value(obs_count_df, 'count', 0)
             
             return {'asteroid': asteroid}, 200
             
@@ -552,14 +587,14 @@ class AsteroidClassifications(Resource):
             # Build Bus-DeMeo list with unclassified
             bus_list = bus_df.to_dict('records') if bus_df is not None and not bus_df.empty else []
             if bus_unclass_df is not None and not bus_unclass_df.empty:
-                unclass_count = int(bus_unclass_df['count'].iloc[0])
+                unclass_count = _extract_count_value(bus_unclass_df, 'count', 0)
                 if unclass_count > 0:
                     bus_list.append({'bus_demeo_class': 'UNCLASSIFIED', 'count': unclass_count})
             
             # Build Tholen list with unclassified
             tholen_list = tholen_df.to_dict('records') if tholen_df is not None and not tholen_df.empty else []
             if tholen_unclass_df is not None and not tholen_unclass_df.empty:
-                unclass_count = int(tholen_unclass_df['count'].iloc[0])
+                unclass_count = _extract_count_value(tholen_unclass_df, 'count', 0)
                 if unclass_count > 0:
                     tholen_list.append({'tholen_class': 'UNCLASSIFIED', 'count': unclass_count})
             
