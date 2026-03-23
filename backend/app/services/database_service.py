@@ -28,14 +28,19 @@ except ModuleNotFoundError:
             self.config = config or {}
 
         def _connect(self):
+            host = self.config.get('host', '127.0.0.1')
+            if host in ('localhost', '::1'):
+                # Prefer TCP loopback to avoid environment-specific socket resolution issues.
+                host = '127.0.0.1'
             return pymysql.connect(
-                host=self.config.get('host', '127.0.0.1'),
+                host=host,
                 port=int(self.config.get('port', 3306)),
                 user=self.config.get('user', 'root'),
                 password=self.config.get('password', ''),
                 database=self.config.get('database'),
                 charset=self.config.get('charset', 'utf8mb4'),
                 autocommit=bool(self.config.get('autocommit', True)),
+                connect_timeout=int(self.config.get('connect_timeout', 5)),
                 cursorclass=DictCursor
             )
 
