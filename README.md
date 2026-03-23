@@ -126,13 +126,13 @@ ngrok http 8080
 ./start-with-ngrok.sh
 ```
 
-详细说明请参考：[NGROK_GUIDE.md](NGROK_GUIDE.md)
+说明：
+- 使用 `./start-with-ngrok-simple.sh` + `ngrok http 8080` 可快速开启单隧道。
+- 使用 `./start-with-ngrok.sh` 可自动启动双隧道。
 
 ## 生产部署
 
-详细的生产环境部署指南：
-- 快速部署：[QUICK_DEPLOY.md](QUICK_DEPLOY.md)
-- 完整指南：[EXTERNAL_DEPLOYMENT_GUIDE.md](EXTERNAL_DEPLOYMENT_GUIDE.md)
+部署说明已合并到仓库主文档与脚本，内部运维细节文档默认保留在本地（未纳入 Git）。
 
 ## API Endpoints
 

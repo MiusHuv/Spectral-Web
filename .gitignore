@@ -126,6 +126,9 @@ public
 tmp/
 temp/
 
+# Private/internal documents (keep local only, never commit)
+docs/private/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

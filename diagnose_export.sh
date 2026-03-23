@@ -144,4 +144,4 @@ if [ ! -f "frontend/.env" ]; then
     echo ""
 fi
 
-echo "如需更多帮助，请查看: EXPORT_TROUBLESHOOTING.md"
+echo "如需更多帮助，请查看: README.md"
