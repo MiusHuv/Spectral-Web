@@ -6,6 +6,39 @@ import SpectralChart from '../../components/spectral/SpectralChart'
 import PropertiesPanel from '../../components/properties/PropertiesPanel'
 import { ExportManager } from '../../components/export/ExportManager'
 
+vi.mock('../../services/api', () => ({
+  apiClient: {
+    getClassificationMetadata: vi.fn(async () => ({
+      system: 'bus_demeo',
+      classes: [
+        { name: 'C', total_count: 1, spectral_count: 1, spectral_percentage: 100 },
+        { name: 'V', total_count: 1, spectral_count: 1, spectral_percentage: 100 }
+      ],
+      total_asteroids: 2,
+      total_with_spectra: 2,
+      overall_spectral_percentage: 100
+    })),
+    getClassificationAsteroidsPage: vi.fn(async (_system: string, classificationName: string) => ({
+      asteroids:
+        classificationName === 'C'
+          ? [mockAsteroidData.asteroids[0]]
+          : [mockAsteroidData.asteroids[1]],
+      pagination: {
+        page: 1,
+        pageSize: 100,
+        total: 1,
+        totalPages: 1,
+        hasMore: false,
+        hasPrevious: false
+      }
+    }))
+  },
+  apiUtils: {
+    withRetry: vi.fn(async (fn: () => Promise<unknown>) => fn()),
+    getErrorMessage: vi.fn((error: Error) => error.message || 'Unknown error')
+  }
+}))
+
 // Mock data for consistent visual tests
 const mockAsteroidData = {
   asteroids: [
@@ -62,6 +95,10 @@ const mockSpectralData = {
     }
   ]
 }
+
+const mockAsteroidRecord = Object.fromEntries(
+  mockAsteroidData.asteroids.map((asteroid) => [asteroid.id, asteroid])
+)
 
 // Helper function to create consistent snapshots
 const createSnapshot = (component: JSX.Element) => {
@@ -141,42 +178,36 @@ describe('Visual Regression Tests', () => {
     })
 
     it('should render single spectrum consistently', () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ spectra: [mockSpectralData.spectra[0]] })
-      } as Response)
-
       const snapshot = createSnapshot(
         <AppProvider>
-          <SpectralChart selectedAsteroids={[1]} />
+          <SpectralChart
+            data={[mockSpectralData.spectra[0]]}
+            asteroidData={mockAsteroidRecord}
+          />
         </AppProvider>
       )
       expect(snapshot).toMatchSnapshot('spectral-chart-single.html')
     })
 
     it('should render multiple spectra consistently', () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockSpectralData
-      } as Response)
-
       const snapshot = createSnapshot(
         <AppProvider>
-          <SpectralChart selectedAsteroids={[1, 2]} />
+          <SpectralChart
+            data={mockSpectralData.spectra}
+            asteroidData={mockAsteroidRecord}
+          />
         </AppProvider>
       )
       expect(snapshot).toMatchSnapshot('spectral-chart-multiple.html')
     })
 
     it('should render no data message consistently', () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ spectra: [] })
-      } as Response)
-
       const snapshot = createSnapshot(
         <AppProvider>
-          <SpectralChart selectedAsteroids={[1]} />
+          <SpectralChart
+            data={[]}
+            asteroidData={mockAsteroidRecord}
+          />
         </AppProvider>
       )
       expect(snapshot).toMatchSnapshot('spectral-chart-no-data.html')
@@ -295,8 +326,14 @@ describe('Visual Regression Tests', () => {
           <AppProvider>
             <div className="main-layout">
               <TaxonomyTree />
-              <SpectralChart selectedAsteroids={[1]} />
-              <PropertiesPanel selectedAsteroids={[1]} />
+              <SpectralChart
+                data={[mockSpectralData.spectra[0]]}
+                asteroidData={mockAsteroidRecord}
+              />
+              <PropertiesPanel
+                selectedAsteroids={[1]}
+                asteroidData={[mockAsteroidData.asteroids[0]]}
+              />
             </div>
           </AppProvider>
         )

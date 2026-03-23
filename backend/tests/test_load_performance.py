@@ -1,20 +1,20 @@
 """
-Load testing for asteroid spectral web application backend
-Tests API endpoints under various load conditions
+Load testing for backend API endpoints using in-process Flask test clients.
+This avoids external localhost dependencies while keeping concurrency checks.
 """
 
-import pytest
+import json
 import time
-import threading
-import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from statistics import mean, median
-import json
-from typing import List, Dict, Any
+from typing import Any, Dict, List, Tuple
+from unittest.mock import Mock
 
-# Test configuration
-BASE_URL = "http://localhost:5000"
-API_BASE = f"{BASE_URL}/api"
+import pytest
+
+from app import create_app
+from app.models.export_models import ExportResult
+
 
 class LoadTestResults:
     def __init__(self):
@@ -22,7 +22,7 @@ class LoadTestResults:
         self.success_count = 0
         self.error_count = 0
         self.errors: List[str] = []
-    
+
     def add_result(self, response_time: float, success: bool, error: str = None):
         self.response_times.append(response_time)
         if success:
@@ -31,285 +31,276 @@ class LoadTestResults:
             self.error_count += 1
             if error:
                 self.errors.append(error)
-    
+
     def get_stats(self) -> Dict[str, Any]:
         if not self.response_times:
             return {}
-        
         return {
-            'total_requests': len(self.response_times),
-            'success_count': self.success_count,
-            'error_count': self.error_count,
-            'success_rate': self.success_count / len(self.response_times) * 100,
-            'avg_response_time': mean(self.response_times),
-            'median_response_time': median(self.response_times),
-            'min_response_time': min(self.response_times),
-            'max_response_time': max(self.response_times),
-            'errors': self.errors[:10]  # First 10 errors
+            "total_requests": len(self.response_times),
+            "success_count": self.success_count,
+            "error_count": self.error_count,
+            "success_rate": self.success_count / len(self.response_times) * 100,
+            "avg_response_time": mean(self.response_times),
+            "median_response_time": median(self.response_times),
+            "min_response_time": min(self.response_times),
+            "max_response_time": max(self.response_times),
+            "errors": self.errors[:10],
         }
 
-def make_request(url: str, method: str = 'GET', data: Dict = None) -> tuple:
-    """Make HTTP request and return (response_time, success, error)"""
+
+def _make_request(app, path: str, method: str = "GET", data: Dict = None) -> Tuple[float, bool, str]:
     start_time = time.time()
     try:
-        if method == 'GET':
-            response = requests.get(url, timeout=10)
-        elif method == 'POST':
-            response = requests.post(url, json=data, timeout=10)
-        else:
-            raise ValueError(f"Unsupported method: {method}")
-        
+        with app.test_client() as client:
+            if method == "GET":
+                response = client.get(path)
+            elif method == "POST":
+                response = client.post(path, json=data)
+            else:
+                raise ValueError(f"Unsupported method: {method}")
         response_time = time.time() - start_time
         success = response.status_code == 200
         error = None if success else f"HTTP {response.status_code}"
-        
         return response_time, success, error
-    except Exception as e:
+    except Exception as exc:  # pragma: no cover - defensive path
         response_time = time.time() - start_time
-        return response_time, False, str(e)
+        return response_time, False, str(exc)
+
+
+@pytest.fixture
+def app(monkeypatch):
+    app = create_app("testing")
+
+    mock_data_access = Mock()
+    mock_data_access.get_classification_systems.return_value = {
+        "systems": [
+            {"name": "bus_demeo", "display_name": "Bus-DeMeo", "classes": ["C", "S"]},
+            {"name": "tholen", "display_name": "Tholen", "classes": ["C", "S"]},
+        ]
+    }
+
+    def _classifications(system, limit=None, offset=0, per_class_limit=None, stream_results=False):
+        requested = min(limit or 100, 100)
+        asteroids = [
+            {
+                "id": i + 1 + offset,
+                "display_name": f"Asteroid {i + 1 + offset}",
+                "identifiers": {
+                    "official_number": i + 1 + offset,
+                    "proper_name": f"Asteroid {i + 1 + offset}",
+                    "provisional_designation": None,
+                },
+                "has_spectral_data": True,
+            }
+            for i in range(requested)
+        ]
+        return {
+            "classes": [{"name": "C", "count": len(asteroids), "total_in_class": 5000, "asteroids": asteroids}],
+            "pagination": {
+                "total_available": 5000,
+                "total_returned": len(asteroids),
+                "offset": offset,
+                "limit": requested,
+                "has_more": True,
+                "next_offset": offset + len(asteroids),
+            },
+            "class_counts": {"C": 5000},
+            "memory_optimized": stream_results,
+        }
+
+    mock_data_access.get_asteroids_by_classification.side_effect = _classifications
+    mock_data_access.get_asteroids_spectra_batch.side_effect = lambda ids: [
+        {
+            "asteroid_id": aid,
+            "wavelengths": [0.45, 1.0, 2.45],
+            "reflectances": [0.9, 1.0, 1.1],
+            "has_data": True,
+            "metadata": {},
+        }
+        for aid in ids
+    ]
+    mock_data_access.get_asteroids_batch.side_effect = lambda ids: [
+        {
+            "id": aid,
+            "identifiers": {"official_number": aid, "proper_name": f"Asteroid {aid}", "provisional_designation": None},
+            "classifications": {"bus_demeo_class": "C", "tholen_class": None, "orbital_class": None},
+            "orbital_elements": {},
+            "physical_properties": {},
+        }
+        for aid in ids
+    ]
+
+    mock_export_service = Mock()
+    mock_export_service.export_data.return_value = ExportResult(
+        content=b"id\n1\n",
+        filename="asteroids_export.csv",
+        mime_type="text/csv",
+        size_bytes=5,
+        item_count=1,
+        format="csv",
+    )
+
+    # Avoid test flakiness from in-memory export rate limiting during concurrent runs.
+    monkeypatch.setattr("app.api.export.RATE_LIMIT_REQUESTS", 1000)
+    monkeypatch.setattr("app.api.export.RATE_LIMIT_WINDOW", 60)
+    from app.api.export import _rate_limit_storage
+
+    _rate_limit_storage.clear()
+
+    monkeypatch.setattr("app.api.classifications.get_data_access", lambda: mock_data_access)
+    monkeypatch.setattr("app.api.spectral.get_data_access", lambda: mock_data_access)
+    monkeypatch.setattr("app.api.asteroids.get_data_access", lambda: mock_data_access)
+    monkeypatch.setattr("app.api.export.get_export_service", lambda: mock_export_service)
+
+    return app
+
 
 class TestLoadPerformance:
-    """Load testing for API endpoints"""
-    
-    def test_classifications_endpoint_load(self):
-        """Test classifications endpoint under load"""
+    """Concurrent load checks against in-process API handlers."""
+
+    def test_classifications_endpoint_load(self, app):
         results = LoadTestResults()
-        url = f"{API_BASE}/classifications"
-        
-        # Test with 50 concurrent requests
+        path = "/api/classifications"
+
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(make_request, url) for _ in range(50)]
-            
+            futures = [executor.submit(_make_request, app, path) for _ in range(50)]
             for future in as_completed(futures):
                 response_time, success, error = future.result()
                 results.add_result(response_time, success, error)
-        
+
         stats = results.get_stats()
-        
-        # Assertions
-        assert stats['success_rate'] >= 95, f"Success rate too low: {stats['success_rate']}%"
-        assert stats['avg_response_time'] < 2.0, f"Average response time too high: {stats['avg_response_time']}s"
-        assert stats['max_response_time'] < 5.0, f"Max response time too high: {stats['max_response_time']}s"
-        
-        print(f"Classifications load test stats: {json.dumps(stats, indent=2)}")
-    
-    def test_asteroids_by_classification_load(self):
-        """Test asteroids by classification endpoint under load"""
+        assert stats["success_rate"] >= 99
+        assert stats["avg_response_time"] < 1.0
+        assert stats["max_response_time"] < 3.0
+
+    def test_asteroids_by_classification_load(self, app):
         results = LoadTestResults()
-        url = f"{API_BASE}/classifications/bus_demeo/asteroids"
-        
-        # Test with 30 concurrent requests
+        path = "/api/classifications/bus_demeo/asteroids?limit=100"
+
         with ThreadPoolExecutor(max_workers=8) as executor:
-            futures = [executor.submit(make_request, url) for _ in range(30)]
-            
+            futures = [executor.submit(_make_request, app, path) for _ in range(30)]
             for future in as_completed(futures):
                 response_time, success, error = future.result()
                 results.add_result(response_time, success, error)
-        
+
         stats = results.get_stats()
-        
-        # Assertions
-        assert stats['success_rate'] >= 90, f"Success rate too low: {stats['success_rate']}%"
-        assert stats['avg_response_time'] < 3.0, f"Average response time too high: {stats['avg_response_time']}s"
-        
-        print(f"Asteroids by classification load test stats: {json.dumps(stats, indent=2)}")
-    
-    def test_spectral_data_batch_load(self):
-        """Test spectral data batch endpoint under load"""
+        assert stats["success_rate"] >= 99
+        assert stats["avg_response_time"] < 1.5
+
+    def test_spectral_data_batch_load(self, app):
         results = LoadTestResults()
-        url = f"{API_BASE}/spectra/batch"
-        
-        # Test data - request spectral data for multiple asteroids
+        path = "/api/spectra/batch"
         test_data = {"asteroid_ids": [1, 2, 3, 4, 5]}
-        
-        # Test with 20 concurrent requests
+
         with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(make_request, url, 'POST', test_data) for _ in range(20)]
-            
+            futures = [executor.submit(_make_request, app, path, "POST", test_data) for _ in range(20)]
             for future in as_completed(futures):
                 response_time, success, error = future.result()
                 results.add_result(response_time, success, error)
-        
+
         stats = results.get_stats()
-        
-        # Assertions for spectral data (more intensive operation)
-        assert stats['success_rate'] >= 85, f"Success rate too low: {stats['success_rate']}%"
-        assert stats['avg_response_time'] < 5.0, f"Average response time too high: {stats['avg_response_time']}s"
-        
-        print(f"Spectral data batch load test stats: {json.dumps(stats, indent=2)}")
-    
-    def test_asteroid_details_batch_load(self):
-        """Test asteroid details batch endpoint under load"""
+        assert stats["success_rate"] >= 99
+        assert stats["avg_response_time"] < 2.0
+
+    def test_asteroid_details_batch_load(self, app):
         results = LoadTestResults()
-        url = f"{API_BASE}/asteroids/batch"
-        
-        # Test data
+        path = "/api/asteroids/batch"
         test_data = {"asteroid_ids": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
-        
-        # Test with 25 concurrent requests
+
         with ThreadPoolExecutor(max_workers=6) as executor:
-            futures = [executor.submit(make_request, url, 'POST', test_data) for _ in range(25)]
-            
+            futures = [executor.submit(_make_request, app, path, "POST", test_data) for _ in range(25)]
             for future in as_completed(futures):
                 response_time, success, error = future.result()
                 results.add_result(response_time, success, error)
-        
+
         stats = results.get_stats()
-        
-        # Assertions
-        assert stats['success_rate'] >= 90, f"Success rate too low: {stats['success_rate']}%"
-        assert stats['avg_response_time'] < 3.0, f"Average response time too high: {stats['avg_response_time']}s"
-        
-        print(f"Asteroid details batch load test stats: {json.dumps(stats, indent=2)}")
-    
-    def test_export_endpoint_load(self):
-        """Test export endpoint under load"""
+        assert stats["success_rate"] >= 99
+        assert stats["avg_response_time"] < 2.0
+
+    def test_export_endpoint_load(self, app):
         results = LoadTestResults()
-        url = f"{API_BASE}/export/data"
-        
-        # Test data
-        test_data = {
-            "asteroid_ids": [1, 2, 3],
-            "format": "json"
-        }
-        
-        # Test with 15 concurrent requests (exports are resource intensive)
+        path = "/api/export/asteroids"
+        test_data = {"item_ids": ["ast_1", "ast_2", "ast_3"], "format": "json"}
+
         with ThreadPoolExecutor(max_workers=4) as executor:
-            futures = [executor.submit(make_request, url, 'POST', test_data) for _ in range(15)]
-            
+            futures = [executor.submit(_make_request, app, path, "POST", test_data) for _ in range(15)]
             for future in as_completed(futures):
                 response_time, success, error = future.result()
                 results.add_result(response_time, success, error)
-        
+
         stats = results.get_stats()
-        
-        # Assertions for export (most intensive operation)
-        assert stats['success_rate'] >= 80, f"Success rate too low: {stats['success_rate']}%"
-        assert stats['avg_response_time'] < 10.0, f"Average response time too high: {stats['avg_response_time']}s"
-        
-        print(f"Export endpoint load test stats: {json.dumps(stats, indent=2)}")
-    
-    def test_sustained_load(self):
-        """Test sustained load over time"""
+        assert stats["success_rate"] >= 99
+        assert stats["avg_response_time"] < 3.0
+
+    def test_sustained_load(self, app):
         results = LoadTestResults()
-        url = f"{API_BASE}/classifications"
-        
-        # Run requests for 30 seconds with 5 concurrent users
-        end_time = time.time() + 30  # 30 seconds
-        
+        path = "/api/classifications"
+        end_time = time.time() + 5  # keep test runtime practical
+
         def make_sustained_requests():
             local_results = LoadTestResults()
             while time.time() < end_time:
-                response_time, success, error = make_request(url)
+                response_time, success, error = _make_request(app, path)
                 local_results.add_result(response_time, success, error)
-                time.sleep(0.5)  # 2 requests per second per thread
+                time.sleep(0.2)
             return local_results
-        
+
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = [executor.submit(make_sustained_requests) for _ in range(5)]
-            
             for future in as_completed(futures):
                 local_results = future.result()
                 results.response_times.extend(local_results.response_times)
                 results.success_count += local_results.success_count
                 results.error_count += local_results.error_count
                 results.errors.extend(local_results.errors)
-        
+
         stats = results.get_stats()
-        
-        # Assertions for sustained load
-        assert stats['success_rate'] >= 95, f"Sustained load success rate too low: {stats['success_rate']}%"
-        assert stats['avg_response_time'] < 2.0, f"Sustained load avg response time too high: {stats['avg_response_time']}s"
-        
-        print(f"Sustained load test stats: {json.dumps(stats, indent=2)}")
-    
-    def test_database_connection_pool_stress(self):
-        """Test database connection pool under stress"""
+        assert stats["success_rate"] >= 99
+        assert stats["avg_response_time"] < 1.5
+
+    def test_database_connection_pool_stress(self, app):
         results = LoadTestResults()
-        
-        # Mix of different endpoints to stress the connection pool
-        endpoints = [
-            f"{API_BASE}/classifications",
-            f"{API_BASE}/classifications/bus_demeo/asteroids",
-            f"{API_BASE}/classifications/tholen/asteroids"
+        paths = [
+            "/api/classifications",
+            "/api/classifications/bus_demeo/asteroids?limit=100",
+            "/api/classifications/tholen/asteroids?limit=100",
         ]
-        
+
         def make_mixed_requests():
             local_results = LoadTestResults()
-            for endpoint in endpoints * 10:  # 30 requests per thread
-                response_time, success, error = make_request(endpoint)
+            for path in paths * 10:
+                response_time, success, error = _make_request(app, path)
                 local_results.add_result(response_time, success, error)
             return local_results
-        
-        # Test with 8 concurrent threads
+
         with ThreadPoolExecutor(max_workers=8) as executor:
             futures = [executor.submit(make_mixed_requests) for _ in range(8)]
-            
             for future in as_completed(futures):
                 local_results = future.result()
                 results.response_times.extend(local_results.response_times)
                 results.success_count += local_results.success_count
                 results.error_count += local_results.error_count
                 results.errors.extend(local_results.errors)
-        
+
         stats = results.get_stats()
-        
-        # Assertions for connection pool stress
-        assert stats['success_rate'] >= 90, f"Connection pool stress success rate too low: {stats['success_rate']}%"
-        assert stats['avg_response_time'] < 3.0, f"Connection pool stress avg response time too high: {stats['avg_response_time']}s"
-        
-        print(f"Database connection pool stress test stats: {json.dumps(stats, indent=2)}")
+        assert stats["success_rate"] >= 99
+        assert stats["avg_response_time"] < 2.0
+
 
 class TestMemoryAndResourceUsage:
-    """Test memory usage and resource consumption"""
-    
-    def test_memory_usage_under_load(self):
-        """Test that memory usage remains stable under load"""
-        import psutil
+    def test_memory_usage_under_load(self, app):
         import os
-        
-        # Get current process
+        import psutil
+
         process = psutil.Process(os.getpid())
-        initial_memory = process.memory_info().rss / 1024 / 1024  # MB
-        
-        # Generate load
-        url = f"{API_BASE}/classifications/bus_demeo/asteroids"
-        
+        initial_memory = process.memory_info().rss / 1024 / 1024
+        path = "/api/classifications/bus_demeo/asteroids?limit=100"
+
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(make_request, url) for _ in range(100)]
-            
+            futures = [executor.submit(_make_request, app, path) for _ in range(100)]
             for future in as_completed(futures):
                 future.result()
-        
-        final_memory = process.memory_info().rss / 1024 / 1024  # MB
-        memory_increase = final_memory - initial_memory
-        
-        # Memory increase should be reasonable (less than 100MB)
-        assert memory_increase < 100, f"Memory usage increased too much: {memory_increase}MB"
-        
-        print(f"Memory usage - Initial: {initial_memory:.2f}MB, Final: {final_memory:.2f}MB, Increase: {memory_increase:.2f}MB")
 
-if __name__ == "__main__":
-    # Run load tests directly
-    test_instance = TestLoadPerformance()
-    
-    print("Running load tests...")
-    print("=" * 50)
-    
-    try:
-        test_instance.test_classifications_endpoint_load()
-        test_instance.test_asteroids_by_classification_load()
-        test_instance.test_spectral_data_batch_load()
-        test_instance.test_asteroid_details_batch_load()
-        test_instance.test_export_endpoint_load()
-        test_instance.test_sustained_load()
-        test_instance.test_database_connection_pool_stress()
-        
-        memory_test = TestMemoryAndResourceUsage()
-        memory_test.test_memory_usage_under_load()
-        
-        print("\nAll load tests completed successfully!")
-        
-    except Exception as e:
-        print(f"Load test failed: {e}")
-        raise
+        final_memory = process.memory_info().rss / 1024 / 1024
+        memory_increase = final_memory - initial_memory
+        assert memory_increase < 100, f"Memory usage increased too much: {memory_increase}MB"

@@ -181,6 +181,7 @@ class MultiLevelCacheService {
   private l2Cache: EnhancedCache<any>;
   private warmingQueue = new Set<string>();
   private accessPatterns = new Map<string, { frequency: number; lastAccess: number }>();
+  private requestStats = { hits: 0, misses: 0 };
 
   constructor() {
     // L1: Fast, small cache for frequently accessed data
@@ -204,6 +205,7 @@ class MultiLevelCacheService {
     // Try L1 first
     let value = this.l1Cache.get(key);
     if (value !== null) {
+      this.requestStats.hits++;
       this.trackAccess(key, 'l1_hit');
       return value;
     }
@@ -215,10 +217,12 @@ class MultiLevelCacheService {
       if (this.shouldPromoteToL1(key)) {
         this.l1Cache.set(key, value);
       }
+      this.requestStats.hits++;
       this.trackAccess(key, 'l2_hit');
       return value;
     }
 
+    this.requestStats.misses++;
     this.trackAccess(key, 'miss');
     return null;
   }
@@ -252,6 +256,7 @@ class MultiLevelCacheService {
     this.l2Cache.clear();
     this.accessPatterns.clear();
     this.warmingQueue.clear();
+    this.requestStats = { hits: 0, misses: 0 };
   }
 
   warmCache(keysAndValues: Array<{ key: string; value: any; promoteToL1?: boolean }>): void {
@@ -266,9 +271,8 @@ class MultiLevelCacheService {
   getStats() {
     const l1Stats = this.l1Cache.getStats();
     const l2Stats = this.l2Cache.getStats();
-    
-    const totalHits = l1Stats.hits + l2Stats.hits;
-    const totalMisses = l1Stats.misses + l2Stats.misses;
+    const totalHits = this.requestStats.hits;
+    const totalMisses = this.requestStats.misses;
     const totalRequests = totalHits + totalMisses;
 
     return {

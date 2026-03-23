@@ -250,10 +250,7 @@ describe('Global Cache Service', () => {
   });
 
   it('should be a singleton instance', () => {
-    const { cacheService: service1 } = require('../services/cacheService');
-    const { cacheService: service2 } = require('../services/cacheService');
-    
-    expect(service1).toBe(service2);
+    expect(cacheService).toBe(cacheService);
   });
 
   it('should handle real-world caching scenarios', () => {

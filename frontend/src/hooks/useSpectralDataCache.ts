@@ -26,7 +26,19 @@ interface UseSpectralDataCacheReturn {
   isLoading: (asteroidId: number) => boolean;
   getError: (asteroidId: number) => string | null;
   clearCache: () => void;
-  getCacheStats: () => { size: number; hitRate: number };
+  getCacheStats: () => {
+    local: {
+      size: number;
+      hitRate: number;
+      hits: number;
+      misses: number;
+    };
+    multiLevel: ReturnType<typeof cacheService.getStats>;
+    combined: {
+      totalRequests: number;
+      overallHitRate: number;
+    };
+  };
 }
 
 export const useSpectralDataCache = (
@@ -235,7 +247,7 @@ export const useSpectralDataCache = (
       const spectralDataMap = new Map<number, SpectralData>();
 
       // Process successful responses
-      response.spectra.forEach(spectrum => {
+      response.spectra.forEach((spectrum: any) => {
         if (spectrum.has_data && spectrum.wavelengths.length > 0) {
           const spectralData: SpectralData = {
             asteroid_id: spectrum.asteroid_id,

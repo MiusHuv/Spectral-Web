@@ -73,36 +73,48 @@ def validate_export_request(data: Dict[str, Any]) -> tuple:
     """
     # Validate item_ids
     if not data or 'item_ids' not in data:
-        return False, jsonify({
-            'error': 'Validation Error',
-            'message': 'item_ids is required',
-            'details': {'field': 'item_ids', 'reason': 'Missing required field'}
-        }), 400
+        return False, (
+            jsonify({
+                'error': 'Validation Error',
+                'message': 'item_ids is required',
+                'details': {'field': 'item_ids', 'reason': 'Missing required field'}
+            }),
+            400,
+        )
     
     item_ids = data.get('item_ids', [])
     if not isinstance(item_ids, list) or len(item_ids) == 0:
-        return False, jsonify({
-            'error': 'Validation Error',
-            'message': 'item_ids must be a non-empty array',
-            'details': {'field': 'item_ids', 'reason': 'Must be a non-empty array'}
-        }), 400
+        return False, (
+            jsonify({
+                'error': 'Validation Error',
+                'message': 'item_ids must be a non-empty array',
+                'details': {'field': 'item_ids', 'reason': 'Must be a non-empty array'}
+            }),
+            400,
+        )
     
     # Validate item count
     if len(item_ids) > 1000:
-        return False, jsonify({
-            'error': 'Validation Error',
-            'message': f'Maximum 1000 items allowed per export. Requested: {len(item_ids)}',
-            'details': {'field': 'item_ids', 'reason': 'Exceeds maximum allowed count', 'max_allowed': 1000}
-        }), 400
+        return False, (
+            jsonify({
+                'error': 'Validation Error',
+                'message': f'Maximum 1000 items allowed per export. Requested: {len(item_ids)}',
+                'details': {'field': 'item_ids', 'reason': 'Exceeds maximum allowed count', 'max_allowed': 1000}
+            }),
+            400,
+        )
     
     # Validate format
     format_type = data.get('format', 'csv')
     if format_type not in ['csv', 'json', 'hdf5', 'fits']:
-        return False, jsonify({
-            'error': 'Validation Error',
-            'message': f'Unsupported format: {format_type}',
-            'details': {'field': 'format', 'reason': 'Must be one of: csv, json, hdf5, fits'}
-        }), 400
+        return False, (
+            jsonify({
+                'error': 'Validation Error',
+                'message': f'Unsupported format: {format_type}',
+                'details': {'field': 'format', 'reason': 'Must be one of: csv, json, hdf5, fits'}
+            }),
+            400,
+        )
     
     return True, None
 

@@ -29,7 +29,7 @@ class AsteroidDetail(Resource):
             
             if asteroid_data is None:
                 raise DataNotFoundError(
-                    f'No asteroid found with ID {asteroid_id}',
+                    f'Asteroid not found with ID {asteroid_id}',
                     resource_type='asteroid'
                 )
             

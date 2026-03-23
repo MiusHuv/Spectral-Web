@@ -51,7 +51,7 @@ class TestBasicAPI:
         
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'invalid asteroid id' in data['error'].lower()
+        assert 'valid integer' in data['message'].lower()
     
     def test_asteroid_batch_validation(self, client):
         """Test asteroid batch endpoint validation."""
@@ -63,7 +63,7 @@ class TestBasicAPI:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'invalid request format' in data['error'].lower()
+        assert 'valid json' in data['message'].lower()
     
     def test_classification_system_validation(self, client):
         """Test classification system validation."""
@@ -83,7 +83,7 @@ class TestBasicAPI:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'missing search query' in data['error'].lower()
+        assert 'search query is required' in data['message'].lower()
     
     def test_404_handling(self, client):
         """Test 404 error handling."""

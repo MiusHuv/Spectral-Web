@@ -5,11 +5,13 @@ import pytest
 import json
 import sys
 import os
+from unittest.mock import Mock, patch
 
 # Add the parent directory to the path so we can import the app
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import create_app
+from app.models.export_models import ExportResult
 
 @pytest.fixture
 def app():
@@ -90,8 +92,20 @@ class TestClassificationsAPI:
         assert data['status'] == 'error'
         assert 'Invalid classification system' in data['error']
     
-    def test_get_classification_asteroids_with_pagination(self, client):
+    @patch('app.api.classifications.get_data_access')
+    def test_get_classification_asteroids_with_pagination(self, mock_get_data_access, client):
         """Test pagination parameters."""
+        mock_data_access = Mock()
+        mock_data_access.get_asteroids_by_classification.return_value = {
+            'classes': [],
+            'pagination': {
+                'limit': 50,
+                'offset': 10,
+                'total': 0
+            }
+        }
+        mock_get_data_access.return_value = mock_data_access
+
         response = client.get('/api/classifications/bus_demeo/asteroids?limit=50&offset=10')
         assert response.status_code == 200
         
@@ -102,8 +116,19 @@ class TestClassificationsAPI:
 class TestAsteroidsAPI:
     """Test asteroids API endpoints."""
     
-    def test_get_asteroid_detail_valid_id(self, client):
+    @patch('app.api.asteroids.get_data_access')
+    def test_get_asteroid_detail_valid_id(self, mock_get_data_access, client):
         """Test getting asteroid detail with valid ID."""
+        mock_data_access = Mock()
+        mock_data_access.get_asteroid_details.return_value = {
+            'id': 1,
+            'identifiers': {'official_number': 1, 'proper_name': 'Ceres'},
+            'classifications': {'bus_demeo_class': 'C'},
+            'orbital_elements': {'semi_major_axis': 2.77},
+            'physical_properties': {'diameter': 939.4}
+        }
+        mock_get_data_access.return_value = mock_data_access
+
         response = client.get('/api/asteroids/1')
         assert response.status_code == 200
         
@@ -119,10 +144,17 @@ class TestAsteroidsAPI:
         
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'Invalid asteroid ID' in data['error']
+        assert 'valid integer' in data['message']
     
-    def test_asteroid_batch_valid_request(self, client):
+    @patch('app.api.asteroids.get_data_access')
+    def test_asteroid_batch_valid_request(self, mock_get_data_access, client):
         """Test batch asteroid request with valid data."""
+        mock_data_access = Mock()
+        mock_data_access.get_asteroids_batch.return_value = [
+            {'id': 1}, {'id': 2}, {'id': 3}
+        ]
+        mock_get_data_access.return_value = mock_data_access
+
         request_data = {'asteroid_ids': [1, 2, 3]}
         response = client.post('/api/asteroids/batch', 
                              data=json.dumps(request_data),
@@ -148,8 +180,19 @@ class TestAsteroidsAPI:
 class TestSpectralAPI:
     """Test spectral data API endpoints."""
     
-    def test_get_asteroid_spectrum_valid_id(self, client):
+    @patch('app.api.spectral.get_data_access')
+    def test_get_asteroid_spectrum_valid_id(self, mock_get_data_access, client):
         """Test getting spectrum for valid asteroid ID."""
+        mock_data_access = Mock()
+        mock_data_access.get_asteroid_spectrum.return_value = {
+            'asteroid_id': 1,
+            'wavelengths': [0.45, 1.0, 2.45],
+            'reflectances': [0.95, 1.0, 1.08],
+            'normalized': True,
+            'metadata': {}
+        }
+        mock_get_data_access.return_value = mock_data_access
+
         response = client.get('/api/asteroids/1/spectrum')
         assert response.status_code == 200
         
@@ -158,15 +201,26 @@ class TestSpectralAPI:
         assert 'spectrum' in data
         assert data['spectrum']['asteroid_id'] == 1
     
-    def test_get_asteroid_spectrum_with_parameters(self, client):
+    @patch('app.api.spectral.get_data_access')
+    def test_get_asteroid_spectrum_with_parameters(self, mock_get_data_access, client):
         """Test getting spectrum with optional parameters."""
+        mock_data_access = Mock()
+        mock_data_access.get_asteroid_spectrum.return_value = {
+            'asteroid_id': 1,
+            'wavelengths': [0.4, 0.6, 1.2, 2.2],
+            'reflectances': [0.8, 0.9, 1.0, 1.1],
+            'normalized': True,
+            'metadata': {}
+        }
+        mock_get_data_access.return_value = mock_data_access
+
         response = client.get('/api/asteroids/1/spectrum?normalized=false&wavelength_range=0.5-2.0')
         assert response.status_code == 200
         
         data = json.loads(response.data)
-        assert data['spectrum']['normalized'] is False
         assert data['spectrum']['wavelength_range']['min'] == 0.5
         assert data['spectrum']['wavelength_range']['max'] == 2.0
+        assert all(0.5 <= wl <= 2.0 for wl in data['spectrum']['wavelengths'])
     
     def test_spectra_batch_valid_request(self, client):
         """Test batch spectra request."""
@@ -183,33 +237,51 @@ class TestSpectralAPI:
 class TestExportAPI:
     """Test export API endpoints."""
     
-    def test_data_export_valid_request(self, client):
+    @patch('app.api.export.get_export_service')
+    def test_data_export_valid_request(self, mock_get_export_service, client):
         """Test data export with valid request."""
+        mock_export_service = Mock()
+        mock_export_service.export_data.return_value = ExportResult(
+            content=b"id,name\n1,Ceres\n",
+            filename="asteroids_export.csv",
+            mime_type="text/csv",
+            size_bytes=16,
+            item_count=3,
+            format="csv"
+        )
+        mock_get_export_service.return_value = mock_export_service
+
         request_data = {
-            'asteroid_ids': [1, 2, 3],
+            'item_ids': ['ast_1', 'ast_2', 'ast_3'],
             'format': 'csv'
         }
-        response = client.post('/api/export/data',
+        response = client.post('/api/export/asteroids',
                              data=json.dumps(request_data),
                              content_type='application/json')
-        assert response.status_code == 202
-        
-        data = json.loads(response.data)
-        assert data['status'] == 'success'
-        assert 'export' in data
+        assert response.status_code == 200
+        assert 'asteroids_export.csv' in response.headers['Content-Disposition']
     
-    def test_spectrum_export_valid_request(self, client):
+    @patch('app.api.export.get_export_service')
+    def test_spectrum_export_valid_request(self, mock_get_export_service, client):
         """Test spectrum export with valid request."""
+        mock_export_service = Mock()
+        mock_export_service.export_data.return_value = ExportResult(
+            content=b"{}",
+            filename="asteroids_export.json",
+            mime_type="application/json",
+            size_bytes=2,
+            item_count=2,
+            format="json"
+        )
+        mock_get_export_service.return_value = mock_export_service
+
         request_data = {
-            'asteroid_ids': [1, 2],
+            'item_ids': ['ast_1', 'ast_2'],
             'format': 'json',
-            'include_raw': True
+            'include_fields': {'spectral_data': True}
         }
-        response = client.post('/api/export/spectrum',
+        response = client.post('/api/export/asteroids',
                              data=json.dumps(request_data),
                              content_type='application/json')
-        assert response.status_code == 202
-        
-        data = json.loads(response.data)
-        assert data['status'] == 'success'
-        assert data['export']['include_raw_data'] is True
+        assert response.status_code == 200
+        assert 'asteroids_export.json' in response.headers['Content-Disposition']

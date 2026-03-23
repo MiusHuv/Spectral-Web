@@ -29,18 +29,19 @@ Object.defineProperty(window, 'URL', {
 
 // Mock document.createElement for download link
 const mockClick = vi.fn();
-const mockAppendChild = vi.fn();
-const mockRemoveChild = vi.fn();
+const originalCreateElement = document.createElement.bind(document);
+const originalAppendChild = document.body.appendChild.bind(document.body);
+const originalRemoveChild = document.body.removeChild.bind(document.body);
+const mockAppendChild = vi.fn((node: Node) => originalAppendChild(node));
+const mockRemoveChild = vi.fn((node: Node) => originalRemoveChild(node));
 Object.defineProperty(document, 'createElement', {
   value: vi.fn((tagName) => {
     if (tagName === 'a') {
-      return {
-        href: '',
-        download: '',
-        click: mockClick,
-      };
+      const anchor = originalCreateElement('a');
+      anchor.click = mockClick;
+      return anchor;
     }
-    return {};
+    return originalCreateElement(tagName);
   }),
 });
 
@@ -148,14 +149,16 @@ describe('ExportManager', () => {
   });
 
   describe('Error Handling', () => {
-    it('shows error message when no asteroids are selected', async () => {
+    it('does not attempt export when no asteroids are selected', async () => {
       const user = userEvent.setup();
       render(<ExportManager selectedAsteroidIds={[]} onClose={mockOnClose} />);
       
       const exportButton = screen.getByText('Export CSV');
+      expect(exportButton).toBeDisabled();
+
       await user.click(exportButton);
       
-      expect(screen.getByText('No asteroids selected for export')).toBeInTheDocument();
+      expect(apiClient.exportData).not.toHaveBeenCalled();
     });
 
     it('shows error message when API call fails', async () => {

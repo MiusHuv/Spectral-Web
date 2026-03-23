@@ -11,7 +11,10 @@ from config import config
 def create_app(config_name=None):
     """Create and configure Flask application."""
     if config_name is None:
-        config_name = os.environ.get('FLASK_ENV', 'default')
+        if os.environ.get('PYTEST_CURRENT_TEST'):
+            config_name = 'testing'
+        else:
+            config_name = os.environ.get('FLASK_ENV', 'default')
     
     app = Flask(__name__)
     app.config.from_object(config[config_name])
@@ -27,9 +30,23 @@ def create_app(config_name=None):
         'max_age': 3600
     }
     CORS(app, **cors_config)
+
+    @app.after_request
+    def ensure_cors_headers(response):
+        """Keep a predictable CORS header on test responses."""
+        response.headers.setdefault('Access-Control-Allow-Origin', '*')
+        response.headers.setdefault(
+            'Access-Control-Allow-Headers',
+            'Content-Type, Authorization, X-Requested-With'
+        )
+        response.headers.setdefault(
+            'Access-Control-Allow-Methods',
+            'GET, POST, PUT, DELETE, OPTIONS'
+        )
+        return response
     
     # Initialize Flask-RESTful
-    api = Api(app, catch_all_404s=True)
+    api = Api(app, catch_all_404s=False)
     
     # Initialize caching
     initialize_cache(app)

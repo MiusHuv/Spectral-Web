@@ -18,7 +18,7 @@ interface PaginatedClassificationContentProps {
   paginationThreshold?: number;
   selectionManager: ReturnType<typeof useSelectionManager>;
   onAsteroidSelection: (asteroidId: number, isSelected: boolean) => void;
-  onBulkSelect: () => void;
+  onBulkSelect: (asteroidIds: number[]) => void;
   canBulkSelect: boolean;
   filters: FilterState;
   onRangeDomainChange?: (domain: RangeDomain) => void;
@@ -183,19 +183,6 @@ const PaginatedClassificationContent: React.FC<PaginatedClassificationContentPro
       console.error('Failed to fetch asteroid data:', error);
     }
   }, [onAsteroidSelection, dispatch]);
-
-  const handleBulkSelect = useCallback(async () => {
-    try {
-      if (usePagination && allLoadedAsteroids.length < totalCount) {
-        console.log('Loading all pages for bulk selection...');
-        await loadAll();
-        console.log('All pages loaded, proceeding with bulk selection');
-      }
-      onBulkSelect();
-    } catch (error) {
-      console.error('Error during bulk selection:', error);
-    }
-  }, [usePagination, allLoadedAsteroids.length, totalCount, loadAll, onBulkSelect]);
 
   const renderAsteroidItem = useCallback((asteroid: AsteroidItem) => {
     const isSelected = memoizedSelectionManager.isAsteroidSelected(asteroid.id);
@@ -420,6 +407,21 @@ const PaginatedClassificationContent: React.FC<PaginatedClassificationContentPro
     computedDomain.max,
     getAsteroidDisplayName
   ]);
+
+  const handleBulkSelect = useCallback(async () => {
+    try {
+      if (usePagination && allLoadedAsteroids.length < totalCount) {
+        console.log('Loading all pages for bulk selection...');
+        await loadAll();
+        console.log('All pages loaded, proceeding with bulk selection');
+      }
+
+      const asteroidIds = filteredAsteroids.map((asteroid) => asteroid.id);
+      onBulkSelect(asteroidIds);
+    } catch (error) {
+      console.error('Error during bulk selection:', error);
+    }
+  }, [usePagination, allLoadedAsteroids.length, totalCount, loadAll, filteredAsteroids, onBulkSelect]);
 
   const virtualScrollProps = useMemo(() => getVirtualScrollProps(), [getVirtualScrollProps]);
 

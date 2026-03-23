@@ -44,6 +44,7 @@ interface UsePaginatedAsteroidsOptions {
 
 interface UsePaginatedAsteroidsReturn {
   // Data
+  data: PaginatedAsteroidData | null;
   asteroids: AsteroidItem[];
   allLoadedAsteroids: AsteroidItem[];
   
@@ -338,6 +339,17 @@ export const usePaginatedAsteroids = (
 
   return {
     // Data
+    data: pagination.currentPage > 0 ? {
+      asteroids,
+      pagination: {
+        page: pagination.currentPage,
+        pageSize: pagination.pageSize,
+        total: pagination.total,
+        totalPages: pagination.totalPages,
+        hasMore: pagination.hasMore,
+        hasPrevious: pagination.hasPrevious
+      }
+    } : null,
     asteroids,
     allLoadedAsteroids,
     

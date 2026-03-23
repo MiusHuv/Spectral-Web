@@ -205,6 +205,9 @@ class QueryCache:
             default_ttl: Default TTL in seconds
         """
         self.cache = TTLCache(max_size, default_ttl)
+        # Keep a lightweight index from cache key -> normalized query text so
+        # table-based invalidation can work even though cache keys are hashed.
+        self._query_index: Dict[str, str] = {}
     
     def _generate_query_key(self, query: str, params: Optional[tuple] = None) -> str:
         """Generate cache key for SQL query."""
@@ -218,6 +221,10 @@ class QueryCache:
             key_data = {'query': normalized_query}
         
         return self.cache._generate_key(key_data)
+
+    def _normalize_query(self, query: str) -> str:
+        """Return a canonical lowercase SQL string used for invalidation matching."""
+        return ' '.join(query.strip().lower().split())
     
     def get_query_result(self, query: str, params: Optional[tuple] = None) -> Optional[Any]:
         """Get cached query result."""
@@ -228,6 +235,7 @@ class QueryCache:
         """Cache query result."""
         key = self._generate_query_key(query, params)
         self.cache.set(key, result, ttl)
+        self._query_index[key] = self._normalize_query(query)
     
     def invalidate_pattern(self, table_name: str) -> int:
         """
@@ -241,14 +249,17 @@ class QueryCache:
         """
         with self.cache._lock:
             keys_to_remove = []
+            table = table_name.lower()
             
             for key in self.cache._cache.keys():
-                # This is a simple pattern matching - could be enhanced
-                if table_name.lower() in key.lower():
+                normalized_query = self._query_index.get(key, "")
+                # Prefer query-text based matching; keep hashed-key fallback.
+                if table in normalized_query or table in key.lower():
                     keys_to_remove.append(key)
             
             for key in keys_to_remove:
                 del self.cache._cache[key]
+                self._query_index.pop(key, None)
             
             return len(keys_to_remove)
     
@@ -259,6 +270,7 @@ class QueryCache:
     def clear(self) -> None:
         """Clear all cached queries."""
         self.cache.clear()
+        self._query_index.clear()
 
 # Global cache instances
 _query_cache = None

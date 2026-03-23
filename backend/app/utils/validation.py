@@ -257,37 +257,37 @@ def validate_request(validation_func):
                 
                 if not validation_result.is_valid:
                     current_app.logger.warning(f'Validation failed for {request.endpoint}: {validation_result.errors}')
-                    return jsonify({
+                    return {
                         'error': 'Validation Error',
                         'message': '; '.join(validation_result.errors),
                         'details': validation_result.to_dict(),
                         'status': 'error'
-                    }), 400
+                    }, 400
                 
                 # Log warnings if any
                 if validation_result.warnings:
                     current_app.logger.info(f'Validation warnings for {request.endpoint}: {validation_result.warnings}')
-                
-                # Proceed with the original function
-                return f(*args, **kwargs)
-                
+
             except ValidationError as e:
                 current_app.logger.warning(f'Validation error in {request.endpoint}: {e}')
-                return jsonify({
+                return {
                     'error': 'Validation Error',
                     'message': str(e),
                     'field': e.field,
                     'code': e.code,
                     'status': 'error'
-                }), 400
+                }, 400
             
             except Exception as e:
                 current_app.logger.error(f'Unexpected error in validation for {request.endpoint}: {e}')
-                return jsonify({
+                return {
                     'error': 'Internal Server Error',
                     'message': 'An unexpected error occurred during validation',
                     'status': 'error'
-                }), 500
+                }, 500
+
+            # Proceed with the original function after validation succeeds.
+            return f(*args, **kwargs)
         
         return decorated_function
     return decorator

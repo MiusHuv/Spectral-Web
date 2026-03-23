@@ -66,7 +66,13 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({
 
   // Define loading operations
   const createLoadingOperations = useCallback(() => {
-    const operations = [
+    const operations: Array<{
+      id: string;
+      label: string;
+      operation: () => Promise<unknown>;
+      required: boolean;
+      retryable: boolean;
+    }> = [
       {
         id: 'classifications',
         label: 'Loading classification metadata',

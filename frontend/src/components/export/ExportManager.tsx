@@ -1,11 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import { apiClient, apiUtils } from '../../services/api';
-import { LoadingSpinner } from '../common/LoadingSpinner';
-import { ErrorMessage } from '../common/ErrorMessage';
+import LoadingSpinner from '../common/LoadingSpinner';
+import ErrorMessage from '../common/ErrorMessage';
 import './ExportManager.css';
 
 export interface ExportManagerProps {
-  selectedAsteroidIds: number[];
+  selectedAsteroidIds?: number[];
+  selectedAsteroids?: number[];
+  isOpen?: boolean;
   onClose?: () => void;
 }
 
@@ -18,8 +20,10 @@ export interface ExportOptions {
 
 export const ExportManager: React.FC<ExportManagerProps> = ({
   selectedAsteroidIds,
+  selectedAsteroids,
   onClose
 }) => {
+  const resolvedSelectedAsteroidIds = selectedAsteroidIds ?? selectedAsteroids ?? [];
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exportOptions, setExportOptions] = useState<ExportOptions>({
@@ -30,7 +34,7 @@ export const ExportManager: React.FC<ExportManagerProps> = ({
   });
 
   const handleExportData = useCallback(async () => {
-    if (selectedAsteroidIds.length === 0) {
+    if (resolvedSelectedAsteroidIds.length === 0) {
       setError('No asteroids selected for export');
       return;
     }
@@ -45,17 +49,21 @@ export const ExportManager: React.FC<ExportManagerProps> = ({
       if (exportOptions.exportType === 'data') {
         // Export asteroid data
         blob = await apiUtils.withRetry(
-          () => apiClient.exportData(selectedAsteroidIds, exportOptions.format, exportOptions.includeSpectral),
-          3,
-          1000
+          () => apiClient.exportData(resolvedSelectedAsteroidIds, exportOptions.format, exportOptions.includeSpectral),
+          {
+            maxRetries: 3,
+            baseDelay: 1000,
+          }
         );
         filename = `asteroid_data_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.${exportOptions.format}`;
       } else if (exportOptions.exportType === 'spectrum') {
         // Export spectral data
         blob = await apiUtils.withRetry(
-          () => apiClient.exportSpectrum(selectedAsteroidIds, exportOptions.includeRaw, exportOptions.format),
-          3,
-          1000
+          () => apiClient.exportSpectrum(resolvedSelectedAsteroidIds, exportOptions.includeRaw, exportOptions.format),
+          {
+            maxRetries: 3,
+            baseDelay: 1000,
+          }
         );
         filename = `spectral_data_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.${exportOptions.format}`;
       } else {
@@ -82,7 +90,7 @@ export const ExportManager: React.FC<ExportManagerProps> = ({
     } finally {
       setIsExporting(false);
     }
-  }, [selectedAsteroidIds, exportOptions, onClose]);
+  }, [resolvedSelectedAsteroidIds, exportOptions, onClose]);
 
   const handleExportVisualization = useCallback(async (format: 'png' | 'svg') => {
     setIsExporting(true);
@@ -196,7 +204,7 @@ export const ExportManager: React.FC<ExportManagerProps> = ({
 
       <div className="export-manager__content">
         <div className="export-manager__info">
-          <p>Selected asteroids: <strong>{selectedAsteroidIds.length}</strong></p>
+          <p>Selected asteroids: <strong>{resolvedSelectedAsteroidIds.length}</strong></p>
         </div>
 
         {error && (
@@ -310,14 +318,14 @@ export const ExportManager: React.FC<ExportManagerProps> = ({
               <button
                 className="export-button export-button--primary"
                 onClick={() => handleExportVisualization('png')}
-                disabled={isExporting || selectedAsteroidIds.length === 0}
+                disabled={isExporting || resolvedSelectedAsteroidIds.length === 0}
               >
                 {isExporting ? <LoadingSpinner size="small" /> : 'Export as PNG'}
               </button>
               <button
                 className="export-button export-button--secondary"
                 onClick={() => handleExportVisualization('svg')}
-                disabled={isExporting || selectedAsteroidIds.length === 0}
+                disabled={isExporting || resolvedSelectedAsteroidIds.length === 0}
               >
                 {isExporting ? <LoadingSpinner size="small" /> : 'Export as SVG'}
               </button>
@@ -326,7 +334,7 @@ export const ExportManager: React.FC<ExportManagerProps> = ({
             <button
               className="export-button export-button--primary"
               onClick={handleExportData}
-              disabled={isExporting || selectedAsteroidIds.length === 0}
+              disabled={isExporting || resolvedSelectedAsteroidIds.length === 0}
             >
               {isExporting ? <LoadingSpinner size="small" /> : `Export ${exportOptions.format.toUpperCase()}`}
             </button>

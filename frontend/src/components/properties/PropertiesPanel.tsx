@@ -3,7 +3,9 @@ import { useAppContext } from '../../context/AppContext';
 import {
   Asteroid,
   OrbitalElements,
-  PhysicalProperties
+  PhysicalProperties,
+  initialAppState,
+  useOptionalAppContext
 } from '../../context/AppContext';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
@@ -11,24 +13,52 @@ import './PropertiesPanel.css';
 
 interface PropertiesPanelProps {
   className?: string;
+  selectedAsteroids?: number[];
+  asteroids?: Asteroid[];
+  asteroidData?: Asteroid[] | Record<number, Asteroid>;
+  loading?: boolean;
+  error?: string | null;
 }
 
-const PropertiesPanel: React.FC<PropertiesPanelProps> = memo(({ className = '' }) => {
-  const { state, dispatch } = useAppContext();
-  const {
-    selectedAsteroids,
-    asteroidData,
-    loading,
-    error,
-    focusedAsteroidId
-  } = state;
+export const PropertiesPanel: React.FC<PropertiesPanelProps> = memo(({
+  className = '',
+  selectedAsteroids: selectedAsteroidsProp,
+  asteroids,
+  asteroidData: asteroidDataProp,
+  loading: loadingProp,
+  error: errorProp,
+}) => {
+  const appContext = useOptionalAppContext();
+  const state = appContext?.state ?? initialAppState;
+  const dispatch = appContext?.dispatch ?? (() => undefined);
+  const asteroidDataRecord = useMemo<Record<number, Asteroid>>(() => {
+    const providedAsteroidData = asteroidDataProp ?? asteroids;
+
+    if (!providedAsteroidData) {
+      return state.asteroidData;
+    }
+
+    if (Array.isArray(providedAsteroidData)) {
+      return providedAsteroidData.reduce<Record<number, Asteroid>>((acc, asteroid) => {
+        acc[asteroid.id] = asteroid;
+        return acc;
+      }, {});
+    }
+
+    return providedAsteroidData;
+  }, [asteroidDataProp, asteroids, state.asteroidData]);
+
+  const selectedAsteroids = selectedAsteroidsProp ?? state.selectedAsteroids;
+  const loading = loadingProp ?? state.loading;
+  const error = errorProp ?? state.error;
+  const focusedAsteroidId = state.focusedAsteroidId;
 
   const selectedAsteroidData = useMemo(
     () =>
       selectedAsteroids
-        .map((id) => asteroidData[id])
+        .map((id) => asteroidDataRecord[id])
         .filter((value): value is Asteroid => Boolean(value)),
-    [selectedAsteroids, asteroidData]
+    [selectedAsteroids, asteroidDataRecord]
   );
 
   const handleFocusChange = useCallback(
@@ -128,17 +158,18 @@ const MultipleAsteroidsView: React.FC<MultipleAsteroidsViewProps> = memo(
         {
           key: 'officialNumber',
           label: 'Official Number',
-          getValue: (asteroid) => asteroid.identifiers?.official_number
+          getValue: (asteroid) => asteroid.identifiers?.official_number ?? asteroid.official_number
         },
         {
           key: 'provisionalDesignation',
           label: 'Provisional Designation',
-          getValue: (asteroid) => asteroid.identifiers?.provisional_designation
+          getValue: (asteroid) =>
+            asteroid.identifiers?.provisional_designation ?? asteroid.provisional_designation
         },
         {
           key: 'orbitalClass',
           label: 'Orbital Class',
-          getValue: (asteroid) => asteroid.classifications?.orbital_class
+          getValue: (asteroid) => asteroid.classifications?.orbital_class ?? asteroid.orbital_class
         },
         {
           key: 'semiMajorAxis',
@@ -305,17 +336,17 @@ const IdentificationSection: React.FC<{ asteroid: Asteroid; compact?: boolean }>
         <div className="property-grid">
           <PropertyRow
             label="Official Number"
-            value={asteroid.identifiers?.official_number}
+            value={asteroid.identifiers?.official_number ?? asteroid.official_number}
             compact={compact}
           />
           <PropertyRow
             label="Proper Name"
-            value={asteroid.identifiers?.proper_name}
+            value={asteroid.identifiers?.proper_name ?? asteroid.proper_name}
             compact={compact}
           />
           <PropertyRow
             label="Provisional Designation"
-            value={asteroid.identifiers?.provisional_designation}
+            value={asteroid.identifiers?.provisional_designation ?? asteroid.provisional_designation}
             compact={compact}
           />
         </div>
@@ -334,17 +365,17 @@ const ClassificationSection: React.FC<{ asteroid: Asteroid; compact?: boolean }>
         <div className="property-grid">
           <PropertyRow
             label="Bus-DeMeo Class"
-            value={asteroid.classifications?.bus_demeo_class}
+            value={asteroid.classifications?.bus_demeo_class ?? asteroid.bus_demeo_class}
             compact={compact}
           />
           <PropertyRow
             label="Tholen Class"
-            value={asteroid.classifications?.tholen_class}
+            value={asteroid.classifications?.tholen_class ?? asteroid.tholen_class}
             compact={compact}
           />
           <PropertyRow
             label="Orbital Class"
-            value={asteroid.classifications?.orbital_class}
+            value={asteroid.classifications?.orbital_class ?? asteroid.orbital_class}
             compact={compact}
           />
         </div>
@@ -434,7 +465,7 @@ PhysicalPropertiesSection.displayName = 'PhysicalPropertiesSection';
 
 const PropertyRow: React.FC<{
   label: string;
-  value?: string | number;
+  value?: string | number | null;
   unit?: string;
   compact?: boolean;
 }> = memo(({ label, value, unit, compact = false }) => {
@@ -461,14 +492,14 @@ const PropertyRow: React.FC<{
 PropertyRow.displayName = 'PropertyRow';
 
 const getAsteroidDisplayName = (asteroid: Asteroid): string => {
-  if (asteroid.identifiers?.proper_name) {
-    return asteroid.identifiers.proper_name;
+  if (asteroid.identifiers?.proper_name ?? asteroid.proper_name) {
+    return asteroid.identifiers?.proper_name ?? asteroid.proper_name ?? '';
   }
-  if (asteroid.identifiers?.official_number) {
-    return `(${asteroid.identifiers.official_number})`;
+  if (asteroid.identifiers?.official_number ?? asteroid.official_number) {
+    return `(${asteroid.identifiers?.official_number ?? asteroid.official_number})`;
   }
-  if (asteroid.identifiers?.provisional_designation) {
-    return asteroid.identifiers.provisional_designation;
+  if (asteroid.identifiers?.provisional_designation ?? asteroid.provisional_designation) {
+    return asteroid.identifiers?.provisional_designation ?? asteroid.provisional_designation ?? '';
   }
   return `Asteroid ${asteroid.id}`;
 };

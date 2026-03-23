@@ -436,6 +436,10 @@ class ApiClient {
         return response.data;
     }
 
+    async getAsteroidSpectrum(id: number): Promise<{ spectrum: any }> {
+        return this.getSpectrum(id);
+    }
+
     async getBatchSpectra(asteroidIds: number[]): Promise<BatchSpectraResponse> {
         // Validate input
         const validation = validateApiRequest.spectralData(asteroidIds);
@@ -447,6 +451,10 @@ class ApiClient {
             asteroid_ids: asteroidIds,
         });
         return response.data;
+    }
+
+    async getAsteroidsSpectraBatch(asteroidIds: number[]): Promise<BatchSpectraResponse> {
+        return this.getBatchSpectra(asteroidIds);
     }
 
     // Export endpoints

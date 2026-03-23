@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface RangeDomain {
   min: number;
@@ -79,7 +79,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   const [localMax, setLocalMax] = useState(() =>
     clamp(value.aMax ?? resolvedDomain.max, resolvedDomain.min, resolvedDomain.max)
   );
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
   // Sync local state when external value changes
@@ -111,8 +111,8 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   // Enhanced debounced query emission with visual feedback
   useEffect(() => {
     // Clear existing timer
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
     }
 
     // Set searching state when user types
@@ -140,14 +140,15 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
       setIsSearching(false);
     }, debounceMs);
 
-    setDebounceTimer(handle);
+    debounceTimerRef.current = handle;
 
     return () => {
-      if (handle) {
-        clearTimeout(handle);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
       }
     };
-  }, [localQuery, debounceMs, onChange, value, debounceTimer]);
+  }, [localQuery, debounceMs, onChange, value]);
 
   const emitChange = useCallback(
     (patch: Partial<FilterState>) => {

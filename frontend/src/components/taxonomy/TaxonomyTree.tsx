@@ -30,7 +30,7 @@ interface TaxonomyTreeProps {
   paginationThreshold?: number; // Number of asteroids above which to use pagination
 }
 
-const TaxonomyTree: React.FC<TaxonomyTreeProps> = memo(({
+export const TaxonomyTree: React.FC<TaxonomyTreeProps> = memo(({
   maxSelections = 10,
   virtualScrollThreshold = 50,
   enablePagination = true,
@@ -175,13 +175,18 @@ const TaxonomyTree: React.FC<TaxonomyTreeProps> = memo(({
   }, [selectionManager, error]);
 
   // Handle bulk selection for a classification
-  const handleClassificationBulkSelect = useCallback(() => {
-    // This will be handled by the PaginatedClassificationContent component
-    // Just clear any selection-related errors
-    if (error && (error.includes('Maximum') || error.includes('selected'))) {
+  const handleClassificationBulkSelect = useCallback((asteroidIds: number[]) => {
+    const result = selectionManager.selectMultipleAsteroids(asteroidIds);
+
+    if (!result.success && result.error) {
+      setError(result.error);
+      return;
+    }
+
+    if (error && (error.includes('Maximum') || error.includes('selected') || error.includes('Cannot select'))) {
       setError(null);
     }
-  }, [error]);
+  }, [selectionManager, error]);
 
 
 

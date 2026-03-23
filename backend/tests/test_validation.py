@@ -295,7 +295,8 @@ class TestValidateRequest:
         with app.test_request_context():
             result, status_code = test_endpoint()
             assert status_code == 400
-            assert 'Test error' in result.get_json()['message']
+            payload = result.get_json() if hasattr(result, 'get_json') else result
+            assert 'Test error' in payload['message']
 
 
 class TestSpecificValidationFunctions:

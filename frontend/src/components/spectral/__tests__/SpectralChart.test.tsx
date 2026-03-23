@@ -5,7 +5,7 @@ import SpectralChart from '../SpectralChart';
 import { SpectralData, Asteroid } from '../../../context/AppContext';
 
 // Mock D3 with comprehensive interactive features support
-const mockZoomBehavior = {
+const mockZoomBehavior: any = {
   scaleExtent: vi.fn(() => mockZoomBehavior),
   extent: vi.fn(() => mockZoomBehavior),
   on: vi.fn(() => mockZoomBehavior),
@@ -31,7 +31,7 @@ const mockSelection: any = {
   node: vi.fn(() => ({ getBoundingClientRect: () => ({ width: 800, height: 500 }) })),
 };
 
-const mockScale = {
+const mockScale: any = {
   domain: vi.fn(() => mockScale),
   range: vi.fn(() => mockScale),
   invert: vi.fn((x: number) => x * 0.001 + 0.5), // Mock wavelength conversion
@@ -39,13 +39,13 @@ const mockScale = {
   rescaleY: vi.fn(() => mockScale),
 };
 
-const mockAxis = {
+const mockAxis: any = {
   tickFormat: vi.fn(() => mockAxis),
   ticks: vi.fn(() => mockAxis),
   tickSize: vi.fn(() => mockAxis),
 };
 
-const mockLine = {
+const mockLine: any = {
   x: vi.fn(() => mockLine),
   y: vi.fn(() => mockLine),
   curve: vi.fn(() => mockLine),
@@ -398,9 +398,9 @@ describe('SpectralChart Interactive Features', () => {
 
       // Verify that mouse event handlers are properly attached
       const onCalls = vi.mocked(mockSelection.on).mock.calls;
-      const mouseOverCalls = onCalls.filter(call => call[0] === 'mouseover');
-      const mouseMoveCalls = onCalls.filter(call => call[0] === 'mousemove');
-      const mouseOutCalls = onCalls.filter(call => call[0] === 'mouseout');
+      const mouseOverCalls = onCalls.filter((call: any[]) => call[0] === 'mouseover');
+      const mouseMoveCalls = onCalls.filter((call: any[]) => call[0] === 'mousemove');
+      const mouseOutCalls = onCalls.filter((call: any[]) => call[0] === 'mouseout');
 
       expect(mouseOverCalls.length).toBeGreaterThan(0);
       expect(mouseMoveCalls.length).toBeGreaterThan(0);

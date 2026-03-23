@@ -90,7 +90,7 @@ class TestAsteroidDetail:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'invalid asteroid id' in data['error'].lower()
+        assert 'valid integer' in data['message'].lower()
     
     def test_get_asteroid_invalid_id_negative(self, client):
         """Test invalid asteroid ID (negative)."""
@@ -119,7 +119,8 @@ class TestAsteroidDetail:
         assert response.status_code == 500
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'failed to fetch' in data['error'].lower()
+        assert data['error'] == 'Database Error'
+        assert 'failed to fetch asteroid 1' in data['message'].lower()
 
 
 class TestAsteroidBatch:
@@ -170,7 +171,7 @@ class TestAsteroidBatch:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'empty' in data['error'].lower()
+        assert 'at least one asteroid id must be provided' in data['message'].lower()
     
     def test_post_asteroids_batch_too_many_ids(self, client):
         """Test batch request with too many asteroid IDs."""
@@ -182,7 +183,7 @@ class TestAsteroidBatch:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'too many' in data['error'].lower()
+        assert 'maximum 100 asteroid ids can be processed at once' in data['message'].lower()
     
     def test_post_asteroids_batch_invalid_json(self, client):
         """Test batch request with invalid JSON."""
@@ -193,7 +194,7 @@ class TestAsteroidBatch:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'invalid request format' in data['error'].lower()
+        assert 'request must be valid json' in data['message'].lower()
     
     def test_post_asteroids_batch_missing_field(self, client):
         """Test batch request with missing asteroid_ids field."""
@@ -204,7 +205,7 @@ class TestAsteroidBatch:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'missing required field' in data['error'].lower()
+        assert 'required field "asteroid_ids" is missing' in data['message'].lower()
     
     def test_post_asteroids_batch_invalid_ids_format(self, client):
         """Test batch request with invalid asteroid_ids format."""
@@ -215,7 +216,7 @@ class TestAsteroidBatch:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'must be an array' in data['message'].lower()
+        assert 'provided as an array' in data['message'].lower()
     
     def test_post_asteroids_batch_invalid_id_values(self, client):
         """Test batch request with invalid asteroid ID values."""
@@ -226,7 +227,8 @@ class TestAsteroidBatch:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'positive integers' in data['message'].lower()
+        assert 'invalid asteroid ids' in data['message'].lower()
+        assert 'valid integer' in data['message'].lower()
     
     def test_post_asteroids_batch_negative_ids(self, client):
         """Test batch request with negative asteroid IDs."""
@@ -237,7 +239,8 @@ class TestAsteroidBatch:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'positive integers' in data['message'].lower()
+        assert 'invalid asteroid ids' in data['message'].lower()
+        assert 'positive' in data['message'].lower()
     
     def test_post_asteroids_batch_database_error(self, client, mock_data_access):
         """Test batch request with database error."""
@@ -250,7 +253,8 @@ class TestAsteroidBatch:
         assert response.status_code == 500
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'failed to fetch' in data['error'].lower()
+        assert data['error'] == 'Database Error'
+        assert 'failed to fetch batch asteroid data' in data['message'].lower()
 
 
 class TestAsteroidSearch:
@@ -298,7 +302,7 @@ class TestAsteroidSearch:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'missing search query' in data['error'].lower()
+        assert 'search query is required' in data['message'].lower()
     
     def test_search_asteroids_no_query_param(self, client):
         """Test search without query parameter."""
@@ -307,7 +311,7 @@ class TestAsteroidSearch:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'missing search query' in data['error'].lower()
+        assert 'search query is required' in data['message'].lower()
     
     def test_search_asteroids_query_too_short(self, client):
         """Test search with query too short."""
@@ -316,16 +320,16 @@ class TestAsteroidSearch:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'query too short' in data['error'].lower()
+        assert 'at least 2 characters long' in data['message'].lower()
     
     def test_search_asteroids_invalid_limit(self, client):
         """Test search with invalid limit parameter."""
-        response = client.get('/api/asteroids/search?q=Ceres&limit=200')
+        response = client.get('/api/asteroids/search?q=Ceres&limit=2000')
         
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'invalid limit' in data['error'].lower()
+        assert 'limit cannot exceed 1000' in data['message'].lower()
     
     def test_search_asteroids_negative_limit(self, client):
         """Test search with negative limit."""
@@ -334,7 +338,7 @@ class TestAsteroidSearch:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'invalid limit' in data['error'].lower()
+        assert 'limit must be a positive integer' in data['message'].lower()
     
     def test_search_asteroids_default_limit(self, client, mock_data_access):
         """Test search with default limit."""
@@ -356,7 +360,8 @@ class TestAsteroidSearch:
         assert response.status_code == 500
         data = json.loads(response.data)
         assert data['status'] == 'error'
-        assert 'failed to search' in data['error'].lower()
+        assert data['error'] == 'Database Error'
+        assert 'failed to search asteroids' in data['message'].lower()
     
     def test_search_asteroids_no_results(self, client, mock_data_access):
         """Test search with no results."""

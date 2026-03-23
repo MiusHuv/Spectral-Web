@@ -11,57 +11,84 @@ import { AppProvider } from '../context/AppContext';
 import SpectralChart from '../components/spectral/SpectralChart';
 import TaxonomyTree from '../components/taxonomy/TaxonomyTree';
 import PropertiesPanel from '../components/properties/PropertiesPanel';
-import { generateLargeAsteroidDataset } from './large-dataset.test';
+import { apiClient } from '../services/api';
+import { generateLargeAsteroidDataset, generatePaginatedResponse } from './test-helpers/largeDataset';
 
 // Mock D3 for spectral chart tests
+const mockD3Selection: any = {
+  selectAll: vi.fn(() => mockD3Selection),
+  remove: vi.fn(() => mockD3Selection),
+  append: vi.fn(() => mockD3Selection),
+  attr: vi.fn(() => mockD3Selection),
+  style: vi.fn(() => mockD3Selection),
+  text: vi.fn(() => mockD3Selection),
+  datum: vi.fn(() => mockD3Selection),
+  data: vi.fn(() => mockD3Selection),
+  enter: vi.fn(() => mockD3Selection),
+  call: vi.fn(() => mockD3Selection),
+  on: vi.fn(() => mockD3Selection),
+  transition: vi.fn(() => mockD3Selection),
+  duration: vi.fn(() => mockD3Selection),
+  select: vi.fn(() => mockD3Selection),
+  html: vi.fn(() => mockD3Selection),
+  node: vi.fn(() => ({ getBoundingClientRect: () => ({ width: 800, height: 500 }) })),
+};
+
+const mockD3Scale: any = {
+  domain: vi.fn(() => mockD3Scale),
+  range: vi.fn(() => mockD3Scale),
+  invert: vi.fn((x: number) => x * 0.001 + 0.5),
+  rescaleX: vi.fn(() => mockD3Scale),
+  rescaleY: vi.fn(() => mockD3Scale),
+};
+
+const mockD3Axis: any = {
+  tickFormat: vi.fn(() => mockD3Axis),
+  ticks: vi.fn(() => mockD3Axis),
+  tickSize: vi.fn(() => mockD3Axis),
+};
+
+const mockD3Line: any = {
+  x: vi.fn(() => mockD3Line),
+  y: vi.fn(() => mockD3Line),
+  curve: vi.fn(() => mockD3Line),
+};
+
+const mockD3Zoom: any = {
+  scaleExtent: vi.fn(() => mockD3Zoom),
+  extent: vi.fn(() => mockD3Zoom),
+  on: vi.fn(() => mockD3Zoom),
+  transform: vi.fn(),
+};
+
 vi.mock('d3', () => ({
-  select: vi.fn(() => ({
-    selectAll: vi.fn(() => ({
-      data: vi.fn(() => ({
-        enter: vi.fn(() => ({
-          append: vi.fn(() => ({
-            attr: vi.fn(() => ({ attr: vi.fn() })),
-            style: vi.fn(() => ({ style: vi.fn() })),
-          })),
-        })),
-        exit: vi.fn(() => ({ remove: vi.fn() })),
-        attr: vi.fn(() => ({ attr: vi.fn() })),
-        style: vi.fn(() => ({ style: vi.fn() })),
-      })),
-    })),
-    append: vi.fn(() => ({
-      attr: vi.fn(() => ({ attr: vi.fn() })),
-      style: vi.fn(() => ({ style: vi.fn() })),
-      call: vi.fn(),
-    })),
-    attr: vi.fn(() => ({ attr: vi.fn() })),
-    style: vi.fn(() => ({ style: vi.fn() })),
-    call: vi.fn(),
-    node: vi.fn(() => ({ getBBox: () => ({ width: 100, height: 50 }) })),
-  })),
-  scaleLinear: vi.fn(() => ({
-    domain: vi.fn(() => ({ range: vi.fn() })),
-    range: vi.fn(() => ({ domain: vi.fn() })),
-  })),
-  line: vi.fn(() => ({
-    x: vi.fn(() => ({ y: vi.fn() })),
-    y: vi.fn(() => ({ x: vi.fn() })),
-  })),
-  axisBottom: vi.fn(),
-  axisLeft: vi.fn(),
-  extent: vi.fn(() => [0, 1]),
-  max: vi.fn(() => 1),
-  min: vi.fn(() => 0),
+  select: vi.fn(() => mockD3Selection),
+  selectAll: vi.fn(() => mockD3Selection),
+  scaleLinear: vi.fn(() => mockD3Scale),
+  scaleOrdinal: vi.fn(() => vi.fn((i: string) => `color-${i}`)),
+  schemeCategory10: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728'],
+  extent: vi.fn(() => [0.5, 2.5]),
+  line: vi.fn(() => mockD3Line),
+  axisBottom: vi.fn(() => mockD3Axis),
+  axisLeft: vi.fn(() => mockD3Axis),
+  format: vi.fn(() => vi.fn((d: number) => d.toFixed(2))),
+  curveLinear: 'curveLinear',
+  zoom: vi.fn(() => mockD3Zoom),
+  zoomIdentity: { k: 1, x: 0, y: 0 },
+  zoomTransform: vi.fn(() => ({ k: 1, x: 0, y: 0, rescaleX: vi.fn(() => mockD3Scale), rescaleY: vi.fn(() => mockD3Scale) })),
+  pointer: vi.fn(() => [400, 250]),
 }));
 
 // Mock API
 vi.mock('../services/api', () => ({
   apiClient: {
     getAsteroidsByClassification: vi.fn(),
+    getClassificationAsteroidsPage: vi.fn(),
     getClassificationMetadata: vi.fn(),
     getAsteroidSpectrum: vi.fn(),
     getAsteroidsSpectraBatch: vi.fn(),
-    getAsteroidsBatch: vi.fn(),
+    getAsteroid: vi.fn(),
+    getSpectrum: vi.fn(),
   },
   apiUtils: {
     withRetry: vi.fn((fn) => fn()),
@@ -78,11 +105,32 @@ const generateMockSpectralData = (asteroidId: number, points: number = 400) => (
 });
 
 describe('Visualization Integrity with Large Datasets', () => {
-  let mockApi: any;
+  const mockApiClient = vi.mocked(apiClient);
 
   beforeEach(() => {
-    mockApi = require('../services/api');
     vi.clearAllMocks();
+    mockApiClient.getClassificationMetadata.mockResolvedValue({
+      system: 'bus_demeo',
+      classes: [
+        { name: 'C', total_count: 1000, spectral_count: 700, spectral_percentage: 70 },
+        { name: 'S', total_count: 1000, spectral_count: 700, spectral_percentage: 70 },
+        { name: 'X', total_count: 1000, spectral_count: 700, spectral_percentage: 70 },
+      ],
+      total_asteroids: 3000,
+      total_with_spectra: 2100,
+      overall_spectral_percentage: 70,
+    } as any);
+    mockApiClient.getAsteroid.mockImplementation(async (id: number) => ({
+      asteroid: {
+        id,
+        proper_name: `Asteroid ${id}`,
+        bus_demeo_class: 'C',
+        has_spectral_data: true,
+      },
+    }) as any);
+    mockApiClient.getSpectrum.mockImplementation(async (id: number) => ({
+      spectrum: generateMockSpectralData(id),
+    }) as any);
   });
 
   describe('SpectralChart with Large Selections', () => {
@@ -98,14 +146,11 @@ describe('Visualization Integrity with Large Datasets', () => {
       }, {} as any);
 
       // Mock spectral data for all asteroids
-      mockApi.apiClient.getAsteroidsSpectraBatch.mockResolvedValue({
-        spectra: selectedAsteroids.map(id => generateMockSpectralData(id)),
-      });
-
       const { container } = render(
         <SpectralChart
           selectedAsteroids={selectedAsteroids}
           asteroidData={asteroidData}
+          spectralData={selectedAsteroids.map(id => generateMockSpectralData(id))}
         />
       );
 
@@ -137,20 +182,17 @@ describe('Visualization Integrity with Large Datasets', () => {
       }, {} as any);
 
       // Mock spectral data with different point counts
-      mockApi.apiClient.getAsteroidsSpectraBatch.mockResolvedValue({
-        spectra: [
-          generateMockSpectralData(1, 100),   // Low resolution
-          generateMockSpectralData(2, 400),   // Standard resolution
-          generateMockSpectralData(3, 800),   // High resolution
-          generateMockSpectralData(4, 1200),  // Very high resolution
-          generateMockSpectralData(5, 50),    // Very low resolution
-        ],
-      });
-
       const { container } = render(
         <SpectralChart
           selectedAsteroids={selectedAsteroids}
           asteroidData={asteroidData}
+          spectralData={[
+            generateMockSpectralData(1, 100),
+            generateMockSpectralData(2, 400),
+            generateMockSpectralData(3, 800),
+            generateMockSpectralData(4, 1200),
+            generateMockSpectralData(5, 50),
+          ]}
         />
       );
 
@@ -174,18 +216,14 @@ describe('Visualization Integrity with Large Datasets', () => {
       }, {} as any);
 
       // Mock partial spectral data (some asteroids missing)
-      mockApi.apiClient.getAsteroidsSpectraBatch.mockResolvedValue({
-        spectra: [
-          generateMockSpectralData(1),
-          generateMockSpectralData(3),
-          // Missing data for asteroids 2, 4, 5
-        ],
-      });
-
       const { container } = render(
         <SpectralChart
           selectedAsteroids={selectedAsteroids}
           asteroidData={asteroidData}
+          spectralData={[
+            generateMockSpectralData(1),
+            generateMockSpectralData(3),
+          ]}
         />
       );
 
@@ -215,16 +253,13 @@ describe('Visualization Integrity with Large Datasets', () => {
         return acc;
       }, {} as any);
 
-      mockApi.apiClient.getAsteroidsSpectraBatch.mockResolvedValue({
-        spectra: selectedAsteroids.map(id => generateMockSpectralData(id, 600)),
-      });
-
       const startTime = performance.now();
       
       const { container } = render(
         <SpectralChart
           selectedAsteroids={selectedAsteroids}
           asteroidData={asteroidData}
+          spectralData={selectedAsteroids.map(id => generateMockSpectralData(id, 600))}
         />
       );
 
@@ -251,16 +286,22 @@ describe('Visualization Integrity with Large Datasets', () => {
         return acc;
       }, {} as Record<string, any[]>);
 
-      const mockClassifications = {
+      mockApiClient.getClassificationMetadata.mockResolvedValue({
+        system: 'bus_demeo',
         classes: Object.entries(classificationGroups).map(([name, asteroids]) => ({
           name,
-          asteroids: asteroids.slice(0, 100), // First page
           total_count: asteroids.length,
-          has_more: asteroids.length > 100,
+          spectral_count: asteroids.length,
+          spectral_percentage: 100,
         })),
-      };
-
-      mockApi.apiClient.getAsteroidsByClassification.mockResolvedValue(mockClassifications);
+        total_asteroids: largeDataset.length,
+        total_with_spectra: largeDataset.length,
+        overall_spectral_percentage: 100,
+      } as any);
+      mockApiClient.getClassificationAsteroidsPage.mockImplementation(async (_system, classificationName) => {
+        const asteroids = classificationGroups[classificationName] ?? [];
+        return generatePaginatedResponse(asteroids, 1, 100) as any;
+      });
 
       const { container } = render(
         <AppProvider>
@@ -272,16 +313,15 @@ describe('Visualization Integrity with Large Datasets', () => {
         expect(screen.getByText('C')).toBeInTheDocument();
       });
 
-      // Should show classification with count
-      const classificationWithCount = screen.getByText(/C.*\(\d+\)/);
+      const classificationWithCount = screen.getByText('C').closest('.classification-header');
       expect(classificationWithCount).toBeInTheDocument();
+      expect(classificationWithCount).toHaveTextContent(/\(\d+\)/);
 
       // Expand large classification
       fireEvent.click(screen.getByText('C'));
 
       await waitFor(() => {
-        // Should show some asteroids (virtual scrolling may limit display)
-        const asteroidElements = screen.getAllByText(/Asteroid \d+/);
+        const asteroidElements = container.querySelectorAll('.asteroid-item');
         expect(asteroidElements.length).toBeGreaterThan(0);
         expect(asteroidElements.length).toBeLessThan(200); // Virtual scrolling should limit
       });
@@ -295,9 +335,18 @@ describe('Visualization Integrity with Large Datasets', () => {
         total_count: 500,
       }));
 
-      mockApi.apiClient.getAsteroidsByClassification.mockResolvedValue({
-        classes: mockClasses,
-      });
+      mockApiClient.getClassificationMetadata.mockResolvedValue({
+        system: 'bus_demeo',
+        classes: mockClasses.map(({ name, asteroids }) => ({
+          name,
+          total_count: asteroids.length,
+          spectral_count: asteroids.length,
+          spectral_percentage: 100,
+        })),
+        total_asteroids: mockClasses.reduce((sum, cls) => sum + cls.asteroids.length, 0),
+        total_with_spectra: mockClasses.reduce((sum, cls) => sum + cls.asteroids.length, 0),
+        overall_spectral_percentage: 100,
+      } as any);
 
       const { container } = render(
         <AppProvider>
@@ -317,20 +366,30 @@ describe('Visualization Integrity with Large Datasets', () => {
       
       // All classifications should be visible
       classifications.forEach(cls => {
-        expect(screen.getByText(new RegExp(`${cls}.*\\(\\d+\\)`))).toBeInTheDocument();
+        const classificationHeader = screen.getByText(cls).closest('.classification-header');
+        expect(classificationHeader).toBeInTheDocument();
+        expect(classificationHeader).toHaveTextContent(/\(\d+\)/);
       });
     });
 
     it('should maintain selection state with large datasets', async () => {
       const largeDataset = generateLargeAsteroidDataset(200);
       
-      mockApi.apiClient.getAsteroidsByClassification.mockResolvedValue({
+      mockApiClient.getClassificationMetadata.mockResolvedValue({
+        system: 'bus_demeo',
         classes: [{
           name: 'C',
-          asteroids: largeDataset,
           total_count: 200,
+          spectral_count: 200,
+          spectral_percentage: 100,
         }],
-      });
+        total_asteroids: 200,
+        total_with_spectra: 200,
+        overall_spectral_percentage: 100,
+      } as any);
+      mockApiClient.getClassificationAsteroidsPage.mockResolvedValue(
+        generatePaginatedResponse(largeDataset, 1, 100) as any
+      );
 
       render(
         <AppProvider>
@@ -391,27 +450,20 @@ describe('Visualization Integrity with Large Datasets', () => {
         return acc;
       }, {} as any);
 
-      // Mock context state
-      const mockState = {
-        selectedAsteroids,
-        asteroidData,
-        loading: false,
-        error: null,
-      };
-
-      vi.doMock('../context/AppContext', () => ({
-        useAppContext: () => ({ state: mockState }),
-      }));
-
-      const { container } = render(<PropertiesPanel />);
+      const { container } = render(
+        <PropertiesPanel
+          selectedAsteroids={selectedAsteroids}
+          asteroidData={asteroidData}
+        />
+      );
 
       // Should render properties panel
       expect(container.querySelector('.properties-panel')).toBeInTheDocument();
 
       // Should show some asteroid properties (may be paginated or virtualized)
-      const propertyElements = screen.getAllByText(/Asteroid \d+/);
-      expect(propertyElements.length).toBeGreaterThan(0);
-      expect(propertyElements.length).toBeLessThanOrEqual(25);
+      const comparedAsteroids = container.querySelectorAll('.comparison-col-button');
+      expect(comparedAsteroids.length).toBe(selectedAsteroids.length);
+      expect(screen.getByText('25 asteroids selected')).toBeInTheDocument();
     });
 
     it('should handle missing property data gracefully', () => {
@@ -448,18 +500,12 @@ describe('Visualization Integrity with Large Datasets', () => {
         },
       };
 
-      const mockState = {
-        selectedAsteroids,
-        asteroidData,
-        loading: false,
-        error: null,
-      };
-
-      vi.doMock('../context/AppContext', () => ({
-        useAppContext: () => ({ state: mockState }),
-      }));
-
-      const { container } = render(<PropertiesPanel />);
+      const { container } = render(
+        <PropertiesPanel
+          selectedAsteroids={selectedAsteroids}
+          asteroidData={asteroidData as any}
+        />
+      );
 
       // Should render without crashing
       expect(container.querySelector('.properties-panel')).toBeInTheDocument();
@@ -498,20 +544,14 @@ describe('Visualization Integrity with Large Datasets', () => {
         return acc;
       }, {} as any);
 
-      const mockState = {
-        selectedAsteroids,
-        asteroidData,
-        loading: false,
-        error: null,
-      };
-
-      vi.doMock('../context/AppContext', () => ({
-        useAppContext: () => ({ state: mockState }),
-      }));
-
       const startTime = performance.now();
       
-      const { container } = render(<PropertiesPanel />);
+      const { container } = render(
+        <PropertiesPanel
+          selectedAsteroids={selectedAsteroids}
+          asteroidData={asteroidData}
+        />
+      );
       
       const renderTime = performance.now() - startTime;
 
@@ -527,19 +567,23 @@ describe('Visualization Integrity with Large Datasets', () => {
     it('should handle large dataset workflow without breaking', async () => {
       const largeDataset = generateLargeAsteroidDataset(500);
       
-      mockApi.apiClient.getAsteroidsByClassification.mockResolvedValue({
+      mockApiClient.getClassificationMetadata.mockResolvedValue({
+        system: 'bus_demeo',
         classes: [{
           name: 'C',
-          asteroids: largeDataset.slice(0, 100),
           total_count: 500,
+          spectral_count: 500,
+          spectral_percentage: 100,
         }],
-      });
+        total_asteroids: 500,
+        total_with_spectra: 500,
+        overall_spectral_percentage: 100,
+      } as any);
+      mockApiClient.getClassificationAsteroidsPage.mockResolvedValue(
+        generatePaginatedResponse(largeDataset, 1, 100) as any
+      );
 
-      mockApi.apiClient.getAsteroidsBatch.mockResolvedValue({
-        asteroids: largeDataset.slice(0, 10),
-      });
-
-      mockApi.apiClient.getAsteroidsSpectraBatch.mockResolvedValue({
+      mockApiClient.getAsteroidsSpectraBatch.mockResolvedValue({
         spectra: largeDataset.slice(0, 10).map(a => generateMockSpectralData(a.id)),
       });
 

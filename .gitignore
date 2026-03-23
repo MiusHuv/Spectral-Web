@@ -27,6 +27,7 @@ MANIFEST
 
 # Virtual environments
 venv/
+.venv/
 env/
 ENV/
 env.bak/
@@ -96,6 +97,7 @@ jspm_packages/
 
 # dotenv environment variables file
 .env
+.env.bak
 .env.local
 .env.development.local
 .env.test.local

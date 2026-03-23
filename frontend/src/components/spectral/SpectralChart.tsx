@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import * as d3 from 'd3';
-import { SpectralData, Asteroid, useAppContext } from '../../context/AppContext';
+import { SpectralData, Asteroid, initialAppState, useOptionalAppContext } from '../../context/AppContext';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 import './SpectralChart.css';
 
 export interface SpectralChartProps {
-  selectedAsteroids: number[];
-  asteroidData: Record<number, Asteroid>;
+  selectedAsteroids?: number[];
+  asteroidData?: Record<number, Asteroid>;
+  spectralData?: SpectralData[];
+  data?: SpectralData[];
   width?: number;
   height?: number;
   className?: string;
@@ -35,9 +37,25 @@ interface ZoomTransform {
   y: number;
 }
 
-const SpectralChart: React.FC<SpectralChartProps> = memo(({
+const getAsteroidName = (asteroid: Asteroid | undefined, asteroidId: number): string => {
+  if (!asteroid) {
+    return `Asteroid ${asteroidId}`;
+  }
+
+  return asteroid.identifiers?.proper_name
+    ?? asteroid.proper_name
+    ?? asteroid.identifiers?.official_number?.toString()
+    ?? asteroid.official_number?.toString()
+    ?? asteroid.identifiers?.provisional_designation
+    ?? asteroid.provisional_designation
+    ?? `Asteroid ${asteroidId}`;
+};
+
+export const SpectralChart: React.FC<SpectralChartProps> = memo(({
   selectedAsteroids,
   asteroidData,
+  spectralData: spectralDataProp,
+  data,
   width = 800,
   height = 500,
   className = '',
@@ -56,14 +74,26 @@ const SpectralChart: React.FC<SpectralChartProps> = memo(({
   const [hoveredSpectrum, setHoveredSpectrum] = useState<number | null>(null);
   const [spectralData, setSpectralData] = useState<SpectralData[]>([]);
 
-  const { state } = useAppContext();
+  const appContext = useOptionalAppContext();
+  const state = appContext?.state ?? initialAppState;
+  const resolvedAsteroidData = asteroidData ?? {};
+  const externalSpectralData = spectralDataProp ?? data;
+  const resolvedSelectedAsteroids = selectedAsteroids
+    ?? externalSpectralData?.map((spectrum) => spectrum.asteroid_id)
+    ?? [];
 
   // Color scale for different spectra
   const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
   // Load spectral data when selected asteroids change
   useEffect(() => {
-    if (selectedAsteroids.length === 0) {
+    if (externalSpectralData) {
+      setSpectralData(externalSpectralData);
+      setError(null);
+      return;
+    }
+
+    if (resolvedSelectedAsteroids.length === 0) {
       setSpectralData([]);
       setError(null);
       return;
@@ -73,13 +103,13 @@ const SpectralChart: React.FC<SpectralChartProps> = memo(({
     setError(null);
 
     // Get spectral data from context
-    const loadedData: SpectralData[] = selectedAsteroids
+    const loadedData: SpectralData[] = resolvedSelectedAsteroids
       .map(id => state.spectralData[id])
       .filter(Boolean);
 
     // Debug: Log spectral data loading
     console.log('SpectralChart: Loading spectral data', {
-      selectedAsteroids,
+      selectedAsteroids: resolvedSelectedAsteroids,
       availableSpectralData: Object.keys(state.spectralData),
       loadedDataCount: loadedData.length,
       loadedData: loadedData.map(d => ({
@@ -93,15 +123,12 @@ const SpectralChart: React.FC<SpectralChartProps> = memo(({
 
     setSpectralData(loadedData);
     setIsLoading(false);
-  }, [selectedAsteroids, state.spectralData]);
+  }, [externalSpectralData, resolvedSelectedAsteroids, state.spectralData]);
 
   // Process spectral data with colors and names
   const processedData: ProcessedSpectralData[] = spectralData.map((spectrum, index) => {
-    const asteroid = asteroidData[spectrum.asteroid_id];
-    const asteroidName = asteroid?.identifiers?.proper_name ||
-      asteroid?.identifiers?.official_number?.toString() ||
-      asteroid?.identifiers?.provisional_designation ||
-      `Asteroid ${spectrum.asteroid_id}`;
+    const asteroid = resolvedAsteroidData[spectrum.asteroid_id];
+    const asteroidName = getAsteroidName(asteroid, spectrum.asteroid_id);
 
     return {
       ...spectrum,
@@ -199,11 +226,8 @@ const SpectralChart: React.FC<SpectralChartProps> = memo(({
 
       // Process only valid data
       const validProcessedData: ProcessedSpectralData[] = validData.map((spectrum, index) => {
-        const asteroid = asteroidData[spectrum.asteroid_id];
-        const asteroidName = asteroid?.identifiers?.proper_name ||
-          asteroid?.identifiers?.official_number?.toString() ||
-          asteroid?.identifiers?.provisional_designation ||
-          `Asteroid ${spectrum.asteroid_id}`;
+        const asteroid = resolvedAsteroidData[spectrum.asteroid_id];
+        const asteroidName = getAsteroidName(asteroid, spectrum.asteroid_id);
 
         return {
           ...spectrum,
@@ -262,24 +286,30 @@ const SpectralChart: React.FC<SpectralChartProps> = memo(({
           // Update scales with zoom transform
           const newXScale = transform.rescaleX(xScale);
           const newYScale = transform.rescaleY(yScale);
+          const xAxisZoomed = d3.axisBottom(newXScale)
+            .tickFormat(((d: d3.NumberValue) => `${Number(d)}μm`) as any)
+            .ticks(8);
+          const yAxisZoomed = d3.axisLeft(newYScale)
+            .tickFormat(d3.format('.2f') as any)
+            .ticks(6);
+          const xGridZoomed = d3.axisBottom(newXScale)
+            .tickSize(-innerHeight)
+            .tickFormat(() => '');
+          const yGridZoomed = d3.axisLeft(newYScale)
+            .tickSize(-innerWidth)
+            .tickFormat(() => '');
 
           // Update axes
           g.select('.x-axis')
-            .call(d3.axisBottom(newXScale).tickFormat(d => `${d}μm`).ticks(8));
+            .call(xAxisZoomed as any);
           g.select('.y-axis')
-            .call(d3.axisLeft(newYScale).tickFormat(d3.format('.2f')).ticks(6));
+            .call(yAxisZoomed as any);
 
           // Update grid
           g.select('.x-grid')
-            .call(d3.axisBottom(newXScale)
-              .tickSize(-innerHeight)
-              .tickFormat(() => '')
-            );
+            .call(xGridZoomed as any);
           g.select('.y-grid')
-            .call(d3.axisLeft(newYScale)
-              .tickSize(-innerWidth)
-              .tickFormat(() => '')
-            );
+            .call(yGridZoomed as any);
 
           // Update spectral lines
           const newLine = d3
@@ -289,10 +319,10 @@ const SpectralChart: React.FC<SpectralChartProps> = memo(({
             .curve(d3.curveLinear);
 
           g.selectAll('.spectral-line')
-            .attr('d', newLine);
+            .attr('d', newLine as any);
 
           g.selectAll('.spectral-line-overlay')
-            .attr('d', newLine);
+            .attr('d', newLine as any);
         });
 
       // Apply zoom behavior to SVG
@@ -300,21 +330,27 @@ const SpectralChart: React.FC<SpectralChartProps> = memo(({
 
       // Add axes
       const xAxis = d3.axisBottom(xScale)
-        .tickFormat(d => `${d}μm`)
+        .tickFormat(((d: d3.NumberValue) => `${Number(d)}μm`) as any)
         .ticks(8);
 
       const yAxis = d3.axisLeft(yScale)
-        .tickFormat(d3.format('.2f'))
+        .tickFormat(d3.format('.2f') as any)
         .ticks(6);
+      const xGrid = d3.axisBottom(xScale)
+        .tickSize(-innerHeight)
+        .tickFormat(() => '');
+      const yGrid = d3.axisLeft(yScale)
+        .tickSize(-innerWidth)
+        .tickFormat(() => '');
 
       g.append('g')
         .attr('class', 'x-axis')
         .attr('transform', `translate(0,${innerHeight})`)
-        .call(xAxis);
+        .call(xAxis as any);
 
       g.append('g')
         .attr('class', 'y-axis')
-        .call(yAxis);
+        .call(yAxis as any);
 
       // Add axis labels
       g.append('text')
@@ -336,17 +372,11 @@ const SpectralChart: React.FC<SpectralChartProps> = memo(({
       g.append('g')
         .attr('class', 'grid x-grid')
         .attr('transform', `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(xScale)
-          .tickSize(-innerHeight)
-          .tickFormat(() => '')
-        );
+        .call(xGrid as any);
 
       g.append('g')
         .attr('class', 'grid y-grid')
-        .call(d3.axisLeft(yScale)
-          .tickSize(-innerWidth)
-          .tickFormat(() => '')
-        );
+        .call(yGrid as any);
 
       // Create tooltip
       const tooltip = d3.select('body')
@@ -384,7 +414,7 @@ const SpectralChart: React.FC<SpectralChartProps> = memo(({
           .attr('fill', 'none')
           .attr('stroke', spectrum.color)
           .attr('stroke-width', hoveredSpectrum === spectrumIndex ? 3 : 2)
-          .attr('d', line)
+          .attr('d', line as any)
           .style('opacity', hoveredSpectrum !== null && hoveredSpectrum !== spectrumIndex ? 0.3 : 1);
 
         // Add invisible overlay for hover detection
@@ -394,7 +424,7 @@ const SpectralChart: React.FC<SpectralChartProps> = memo(({
           .attr('fill', 'none')
           .attr('stroke', 'transparent')
           .attr('stroke-width', 15)
-          .attr('d', line)
+          .attr('d', line as any)
           .style('cursor', 'crosshair')
           .on('mouseover', function (event) {
             setHoveredSpectrum(spectrumIndex);
@@ -579,16 +609,13 @@ const SpectralChart: React.FC<SpectralChartProps> = memo(({
     } finally {
       setIsLoading(false);
     }
-  }, [spectralData, asteroidData, dimensions, getWavelengthDomain, getReflectanceDomain, colorScale, hoveredSpectrum, zoomTransform, resetZoom, validateSpectralData]);
+  }, [spectralData, resolvedAsteroidData, dimensions, getWavelengthDomain, getReflectanceDomain, colorScale, hoveredSpectrum, zoomTransform, resetZoom, validateSpectralData]);
 
   // Validate and process data for display
   const { valid: validData, invalid: invalidData } = validateSpectralData(spectralData);
   const validProcessedData: ProcessedSpectralData[] = validData.map((spectrum, index) => {
-    const asteroid = asteroidData[spectrum.asteroid_id];
-    const asteroidName = asteroid?.identifiers?.proper_name ||
-      asteroid?.identifiers?.official_number?.toString() ||
-      asteroid?.identifiers?.provisional_designation ||
-      `Asteroid ${spectrum.asteroid_id}`;
+    const asteroid = resolvedAsteroidData[spectrum.asteroid_id];
+    const asteroidName = getAsteroidName(asteroid, spectrum.asteroid_id);
 
     return {
       ...spectrum,
@@ -598,7 +625,7 @@ const SpectralChart: React.FC<SpectralChartProps> = memo(({
   });
 
   // Handle empty or invalid data
-  if (selectedAsteroids.length === 0) {
+  if (resolvedSelectedAsteroids.length === 0) {
     return (
       <div className={`spectral-chart-container ${className}`} ref={containerRef}>
         <div className="spectral-chart-empty">
@@ -663,6 +690,7 @@ const SpectralChart: React.FC<SpectralChartProps> = memo(({
           width={dimensions.width}
           height={dimensions.height}
           className="spectral-chart-svg"
+          data-testid="spectral-chart"
         />
       </div>
 

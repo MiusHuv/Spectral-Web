@@ -3,15 +3,21 @@ import React, { createContext, useContext, useReducer, useCallback, ReactNode } 
 // Types for the application state
 export interface Asteroid {
   id: number;
+  official_number?: number | null;
+  proper_name?: string | null;
+  provisional_designation?: string | null;
+  bus_demeo_class?: string | null;
+  tholen_class?: string | null;
+  orbital_class?: string | null;
   identifiers?: {
-    official_number?: number;
-    proper_name?: string;
-    provisional_designation?: string;
+    official_number?: number | null;
+    proper_name?: string | null;
+    provisional_designation?: string | null;
   };
   classifications?: {
-    bus_demeo_class?: string;
-    tholen_class?: string;
-    orbital_class?: string;
+    bus_demeo_class?: string | null;
+    tholen_class?: string | null;
+    orbital_class?: string | null;
   };
   orbital_elements?: OrbitalElements;
   physical_properties?: PhysicalProperties;
@@ -27,17 +33,17 @@ export interface OrbitalElements {
 }
 
 export interface PhysicalProperties {
-  diameter?: number;
-  albedo?: number;
-  rotation_period?: number;
-  density?: number;
+  diameter?: number | null;
+  albedo?: number | null;
+  rotation_period?: number | null;
+  density?: number | null;
 }
 
 export interface SpectralData {
   asteroid_id: number;
   wavelengths: number[];
   reflectances: number[];
-  normalized: boolean;
+  normalized?: boolean;
 }
 
 export interface ClassificationSystem {
@@ -82,7 +88,7 @@ export type AppAction =
   | { type: 'TOGGLE_PROPERTIES_PANEL' };
 
 // Initial state
-const initialState: AppState = {
+export const initialAppState: AppState = {
   loading: false,
   error: null,
   selectedAsteroids: [],
@@ -221,7 +227,7 @@ interface AppContextType {
 }
 
 // Create context
-const AppContext = createContext<AppContextType | undefined>(undefined);
+export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 // Provider component
 interface AppProviderProps {
@@ -229,7 +235,7 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
-  const [state, dispatch] = useReducer(appReducer, initialState);
+  const [state, dispatch] = useReducer(appReducer, initialAppState);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>
@@ -266,8 +272,12 @@ export const selectionUtils = {
 };
 
 // Custom hook to use the context
+export const useOptionalAppContext = (): AppContextType | undefined => {
+  return useContext(AppContext);
+};
+
 export const useAppContext = (): AppContextType => {
-  const context = useContext(AppContext);
+  const context = useOptionalAppContext();
   if (context === undefined) {
     throw new Error('useAppContext must be used within an AppProvider');
   }

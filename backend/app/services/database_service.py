@@ -216,6 +216,10 @@ class FlaskDatabaseService:
             except TypeError:
                 serializable.append(None)
         return serializable
+
+    def _row_value(self, row: pd.Series, key: str):
+        """Safely read an optional column from a query row."""
+        return row[key] if key in row.index else None
     
     @cache_query(ttl=600)  # Cache for 10 minutes
     def get_asteroid_by_id(self, asteroid_id: int) -> Optional[Dict[str, Any]]:
@@ -249,31 +253,48 @@ class FlaskDatabaseService:
                 return None
             
             row = df.iloc[0]
+            asteroid_id_value = self._row_value(row, 'id')
+            official_number = self._row_value(row, 'official_number')
+            proper_name = self._row_value(row, 'proper_name')
+            provisional_designation = self._row_value(row, 'provisional_designation')
+            bus_demeo_class = self._row_value(row, 'bus_demeo_class')
+            tholen_class = self._row_value(row, 'tholen_class')
+            orbital_class = self._row_value(row, 'orbital_class')
+            semi_major_axis = self._row_value(row, 'semi_major_axis')
+            eccentricity = self._row_value(row, 'eccentricity')
+            inclination = self._row_value(row, 'inclination')
+            orbital_period = self._row_value(row, 'orbital_period')
+            perihelion_distance = self._row_value(row, 'perihelion_distance')
+            aphelion_distance = self._row_value(row, 'aphelion_distance')
+            diameter = self._row_value(row, 'diameter')
+            albedo = self._row_value(row, 'albedo')
+            rotation_period = self._row_value(row, 'rotation_period')
+            density = self._row_value(row, 'density')
             return {
-                'id': int(row['id']),
+                'id': int(asteroid_id_value) if pd.notna(asteroid_id_value) else asteroid_id,
                 'identifiers': {
-                    'official_number': int(row['official_number']) if pd.notna(row['official_number']) else None,
-                    'proper_name': str(row['proper_name']) if pd.notna(row['proper_name']) else None,
-                    'provisional_designation': str(row['provisional_designation']) if pd.notna(row['provisional_designation']) else None
+                    'official_number': int(official_number) if pd.notna(official_number) else None,
+                    'proper_name': str(proper_name) if pd.notna(proper_name) else None,
+                    'provisional_designation': str(provisional_designation) if pd.notna(provisional_designation) else None
                 },
                 'classifications': {
-                    'bus_demeo_class': str(row['bus_demeo_class']) if pd.notna(row['bus_demeo_class']) else None,
-                    'tholen_class': str(row['tholen_class']) if pd.notna(row['tholen_class']) else None,
-                    'orbital_class': str(row['orbital_class']) if pd.notna(row['orbital_class']) else None
+                    'bus_demeo_class': str(bus_demeo_class) if pd.notna(bus_demeo_class) else None,
+                    'tholen_class': str(tholen_class) if pd.notna(tholen_class) else None,
+                    'orbital_class': str(orbital_class) if pd.notna(orbital_class) else None
                 },
                 'orbital_elements': {
-                    'semi_major_axis': float(row['semi_major_axis']) if pd.notna(row['semi_major_axis']) else None,
-                    'eccentricity': float(row['eccentricity']) if pd.notna(row['eccentricity']) else None,
-                    'inclination': float(row['inclination']) if pd.notna(row['inclination']) else None,
-                    'orbital_period': float(row['orbital_period']) if pd.notna(row['orbital_period']) else None,
-                    'perihelion_distance': float(row['perihelion_distance']) if pd.notna(row['perihelion_distance']) else None,
-                    'aphelion_distance': float(row['aphelion_distance']) if pd.notna(row['aphelion_distance']) else None
+                    'semi_major_axis': float(semi_major_axis) if pd.notna(semi_major_axis) else None,
+                    'eccentricity': float(eccentricity) if pd.notna(eccentricity) else None,
+                    'inclination': float(inclination) if pd.notna(inclination) else None,
+                    'orbital_period': float(orbital_period) if pd.notna(orbital_period) else None,
+                    'perihelion_distance': float(perihelion_distance) if pd.notna(perihelion_distance) else None,
+                    'aphelion_distance': float(aphelion_distance) if pd.notna(aphelion_distance) else None
                 },
                 'physical_properties': {
-                    'diameter': float(row['diameter']) if pd.notna(row['diameter']) else None,
-                    'albedo': float(row['albedo']) if pd.notna(row['albedo']) else None,
-                    'rotation_period': float(row['rotation_period']) if pd.notna(row['rotation_period']) else None,
-                    'density': float(row['density']) if pd.notna(row['density']) else None
+                    'diameter': float(diameter) if pd.notna(diameter) else None,
+                    'albedo': float(albedo) if pd.notna(albedo) else None,
+                    'rotation_period': float(rotation_period) if pd.notna(rotation_period) else None,
+                    'density': float(density) if pd.notna(density) else None
                 }
             }
             
@@ -319,31 +340,48 @@ class FlaskDatabaseService:
             
             asteroids = []
             for _, row in df.iterrows():
+                asteroid_id_value = self._row_value(row, 'id')
+                official_number = self._row_value(row, 'official_number')
+                proper_name = self._row_value(row, 'proper_name')
+                provisional_designation = self._row_value(row, 'provisional_designation')
+                bus_demeo_class = self._row_value(row, 'bus_demeo_class')
+                tholen_class = self._row_value(row, 'tholen_class')
+                orbital_class = self._row_value(row, 'orbital_class')
+                semi_major_axis = self._row_value(row, 'semi_major_axis')
+                eccentricity = self._row_value(row, 'eccentricity')
+                inclination = self._row_value(row, 'inclination')
+                orbital_period = self._row_value(row, 'orbital_period')
+                perihelion_distance = self._row_value(row, 'perihelion_distance')
+                aphelion_distance = self._row_value(row, 'aphelion_distance')
+                diameter = self._row_value(row, 'diameter')
+                albedo = self._row_value(row, 'albedo')
+                rotation_period = self._row_value(row, 'rotation_period')
+                density = self._row_value(row, 'density')
                 asteroids.append({
-                    'id': int(row['id']),
+                    'id': int(asteroid_id_value) if pd.notna(asteroid_id_value) else None,
                     'identifiers': {
-                        'official_number': int(row['official_number']) if pd.notna(row['official_number']) else None,
-                        'proper_name': str(row['proper_name']) if pd.notna(row['proper_name']) else None,
-                        'provisional_designation': str(row['provisional_designation']) if pd.notna(row['provisional_designation']) else None
+                        'official_number': int(official_number) if pd.notna(official_number) else None,
+                        'proper_name': str(proper_name) if pd.notna(proper_name) else None,
+                        'provisional_designation': str(provisional_designation) if pd.notna(provisional_designation) else None
                     },
                     'classifications': {
-                        'bus_demeo_class': str(row['bus_demeo_class']) if pd.notna(row['bus_demeo_class']) else None,
-                        'tholen_class': str(row['tholen_class']) if pd.notna(row['tholen_class']) else None,
-                        'orbital_class': str(row['orbital_class']) if pd.notna(row['orbital_class']) else None
+                        'bus_demeo_class': str(bus_demeo_class) if pd.notna(bus_demeo_class) else None,
+                        'tholen_class': str(tholen_class) if pd.notna(tholen_class) else None,
+                        'orbital_class': str(orbital_class) if pd.notna(orbital_class) else None
                     },
                     'orbital_elements': {
-                        'semi_major_axis': float(row['semi_major_axis']) if pd.notna(row['semi_major_axis']) else None,
-                        'eccentricity': float(row['eccentricity']) if pd.notna(row['eccentricity']) else None,
-                        'inclination': float(row['inclination']) if pd.notna(row['inclination']) else None,
-                        'orbital_period': float(row['orbital_period']) if pd.notna(row['orbital_period']) else None,
-                        'perihelion_distance': float(row['perihelion_distance']) if pd.notna(row['perihelion_distance']) else None,
-                        'aphelion_distance': float(row['aphelion_distance']) if pd.notna(row['aphelion_distance']) else None
+                        'semi_major_axis': float(semi_major_axis) if pd.notna(semi_major_axis) else None,
+                        'eccentricity': float(eccentricity) if pd.notna(eccentricity) else None,
+                        'inclination': float(inclination) if pd.notna(inclination) else None,
+                        'orbital_period': float(orbital_period) if pd.notna(orbital_period) else None,
+                        'perihelion_distance': float(perihelion_distance) if pd.notna(perihelion_distance) else None,
+                        'aphelion_distance': float(aphelion_distance) if pd.notna(aphelion_distance) else None
                     },
                     'physical_properties': {
-                        'diameter': float(row['diameter']) if pd.notna(row['diameter']) else None,
-                        'albedo': float(row['albedo']) if pd.notna(row['albedo']) else None,
-                        'rotation_period': float(row['rotation_period']) if pd.notna(row['rotation_period']) else None,
-                        'density': float(row['density']) if pd.notna(row['density']) else None
+                        'diameter': float(diameter) if pd.notna(diameter) else None,
+                        'albedo': float(albedo) if pd.notna(albedo) else None,
+                        'rotation_period': float(rotation_period) if pd.notna(rotation_period) else None,
+                        'density': float(density) if pd.notna(density) else None
                     }
                 })
             
