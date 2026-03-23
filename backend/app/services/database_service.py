@@ -5,6 +5,7 @@ Integrates existing database utilities with Flask application context.
 import ast
 import json
 import logging
+import os
 import time
 from typing import Optional, Dict, Any, List
 from flask import current_app
@@ -16,10 +17,13 @@ from app.utils.cache import get_query_cache, cache_query
 
 logger = logging.getLogger(__name__)
 
-try:
+_USE_EXTERNAL_DB_UTILS = os.environ.get('ASTEROID_USE_EXTERNAL_DB_UTILS', '').lower() in {'1', 'true', 'yes'}
+
+if _USE_EXTERNAL_DB_UTILS:
     from utils.database_utils import DatabaseManager, SpectralDataLoader
-except ModuleNotFoundError:
-    logger.warning("utils.database_utils not found, using built-in database helpers")
+    logger.info("Using external utils.database_utils backend")
+else:
+    logger.info("Using built-in database helpers backend")
 
     class DatabaseManager:
         """Minimal database manager compatible with FlaskDatabaseService."""
