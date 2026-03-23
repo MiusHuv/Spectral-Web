@@ -5,7 +5,6 @@ Integrates existing database utilities with Flask application context.
 import ast
 import json
 import logging
-import os
 import time
 from typing import Optional, Dict, Any, List
 from flask import current_app
@@ -17,7 +16,7 @@ from app.utils.cache import get_query_cache, cache_query
 
 logger = logging.getLogger(__name__)
 
-_USE_EXTERNAL_DB_UTILS = os.environ.get('ASTEROID_USE_EXTERNAL_DB_UTILS', '').lower() in {'1', 'true', 'yes'}
+_USE_EXTERNAL_DB_UTILS = False
 
 if _USE_EXTERNAL_DB_UTILS:
     from utils.database_utils import DatabaseManager, SpectralDataLoader
@@ -290,6 +289,20 @@ class FlaskDatabaseService:
             raise RuntimeError("Database manager not initialized")
         
         return self.db_manager.get_connection()
+
+    def _looks_like_placeholder_result(self, result: Optional[pd.DataFrame]) -> bool:
+        """
+        Detect template/mock rows where each value equals its column name.
+        This indicates an invalid fallback path rather than real database data.
+        """
+        if result is None or result.empty:
+            return False
+
+        try:
+            first_row = result.iloc[0]
+            return all(str(first_row[col]) == str(col) for col in result.columns)
+        except Exception:
+            return False
     
     def execute_query(self, query: str, params: Optional[tuple] = None, use_cache: bool = True, cache_ttl: int = 300) -> Optional[pd.DataFrame]:
         """Execute a SQL query and return results as DataFrame with performance monitoring."""
@@ -311,6 +324,10 @@ class FlaskDatabaseService:
             
             # Execute query with performance monitoring
             result = self.db_manager.execute_query(query, params)
+            if self._looks_like_placeholder_result(result):
+                raise RuntimeError(
+                    "Database returned placeholder/template rows; please verify DB connection and data source"
+                )
             query_time = time.time() - query_start_time
             
             # Log performance metrics

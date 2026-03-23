@@ -11,6 +11,32 @@ logger = logging.getLogger(__name__)
 meteorites_bp = Blueprint('meteorites', __name__)
 api = Api(meteorites_bp)
 
+
+def _safe_int(value, default: int = 0) -> int:
+    try:
+        if value is None:
+            return default
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _extract_count_value(df, column: str, default: int = 0) -> int:
+    if df is None:
+        return default
+    try:
+        if hasattr(df, 'empty') and df.empty:
+            return default
+        if hasattr(df, 'columns') and column in df.columns:
+            return _safe_int(df[column].iloc[0], default)
+        if hasattr(df, 'iloc'):
+            return _safe_int(df.iloc[0, 0], default)
+        if isinstance(df, dict):
+            return _safe_int(df.get(column), default)
+    except Exception:
+        return default
+    return default
+
 class MeteoritesList(Resource):
     """Get list of meteorites with filtering and pagination"""
     
@@ -19,8 +45,10 @@ class MeteoritesList(Resource):
             db_service = get_database_service()
             
             # Get query parameters
-            page = int(request.args.get('page', 1))
-            page_size = int(request.args.get('page_size', 50))
+            page = _safe_int(request.args.get('page', 1), 1)
+            page_size = _safe_int(request.args.get('page_size', 50), 50)
+            page = max(page, 1)
+            page_size = min(max(page_size, 1), 500)
             main_label = request.args.get('main_label')  # Filter by main classification
             specimen_type = request.args.get('specimen_type')
             # Search parameters
@@ -100,7 +128,7 @@ class MeteoritesList(Resource):
             # Get total count
             count_query = f"SELECT COUNT(*) as total FROM meteorites {where_sql}"
             count_result = db_service.execute_query(count_query)
-            total = int(count_result['total'].iloc[0]) if count_result is not None else 0
+            total = _extract_count_value(count_result, 'total', 0)
             
             # Build ORDER BY clause with NULL handling
             if sort_order == 'desc':
