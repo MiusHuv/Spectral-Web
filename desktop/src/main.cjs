@@ -344,7 +344,7 @@ async function startApplication() {
     logBackend(`Startup failure: ${error.stack || error}\n`);
     dialog.showErrorBox(
       'Spectral Web could not start',
-      'Check the MySQL connection settings. Detailed diagnostics were written to backend.log in the application data directory.'
+      'The configured MySQL server could not be reached or rejected the credentials. Check Database Settings, then try again. Detailed diagnostics were written to backend.log in the application data directory.'
     );
     openSettings();
   } finally {

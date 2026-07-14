@@ -1,5 +1,7 @@
 """Cross-platform entry point for the desktop application's backend sidecar."""
 import os
+import sys
+import traceback
 
 from waitress import serve
 
@@ -14,4 +16,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception:
+        traceback.print_exc()
+        sys.exit(1)

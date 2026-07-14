@@ -51,6 +51,11 @@ SPECTRAL_DB_PASSWORD
 The database must already contain the tables used by the API, including
 `asteroids`, `observations`, and `meteorites`.
 
+`127.0.0.1` means the computer on which the desktop application is running. A
+Windows installation on another computer must use a reachable LAN/VPN hostname
+or IP address for MySQL, and the server firewall and MySQL grants must allow that
+client. Use a dedicated least-privilege database account rather than remote root.
+
 ## Signing boundary
 
 The checked-in workflow produces installable but unsigned artifacts. Public
