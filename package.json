@@ -23,7 +23,11 @@
     "docker:build": "docker-compose build",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f"
+    "docker:logs": "docker-compose logs -f",
+    "build:desktop:backend": "node desktop/scripts/build-backend.cjs",
+    "desktop:dist:mac": "npm run build && npm run build:desktop:backend && npm --prefix desktop run dist:mac",
+    "desktop:dist:win": "npm run build && npm run build:desktop:backend && npm --prefix desktop run dist:win",
+    "desktop:dist:linux": "npm run build && npm run build:desktop:backend && npm --prefix desktop run dist:linux"
   },
   "devDependencies": {
     "baseline-browser-mapping": "^2.9.7",

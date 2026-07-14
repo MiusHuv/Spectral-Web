@@ -1,0 +1,107 @@
+name: Desktop installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS Apple Silicon
+            artifact: mac-arm64
+            os: macos-15
+            target: mac
+          - label: macOS Intel
+            artifact: mac-x64
+            os: macos-15-intel
+            target: mac
+          - label: Windows x64
+            artifact: win-x64
+            os: windows-2025
+            target: win
+          - label: Linux x64
+            artifact: linux-x64
+            os: ubuntu-24.04
+            target: linux
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            desktop/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements-desktop.txt
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --ignore-scripts
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Install backend packaging dependencies
+        run: python -m pip install -r backend/requirements-desktop.txt
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Build backend sidecar
+        env:
+          PYTHON: python
+        run: node desktop/scripts/build-backend.cjs
+
+      - name: Build installer
+        working-directory: desktop
+        run: npm run dist:${{ matrix.target }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spectral-web-${{ matrix.artifact }}
+          path: |
+            desktop/release/*.dmg
+            desktop/release/*.zip
+            desktop/release/*.exe
+            desktop/release/*.AppImage
+            desktop/release/*.deb
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-bundle
+          merge-multiple: true
+      - name: Generate checksums
+        working-directory: release-bundle
+        run: sha256sum * > SHA256SUMS.txt
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" release-bundle/* --generate-notes --verify-tag

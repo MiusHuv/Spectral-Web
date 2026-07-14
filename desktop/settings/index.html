@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Database Settings</title>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="mark" aria-hidden="true">S</div>
+        <div>
+          <h1>Connect Spectral Web</h1>
+          <p>Enter the MySQL service used by the spectral catalogue.</p>
+        </div>
+      </header>
+
+      <form id="settings-form">
+        <label>Host<input id="host" name="host" autocomplete="off" required /></label>
+        <div class="row">
+          <label>Port<input id="port" name="port" type="number" min="1" max="65535" required /></label>
+          <label>Database<input id="name" name="name" autocomplete="off" required /></label>
+        </div>
+        <label>User<input id="user" name="user" autocomplete="username" required /></label>
+        <label>Password<input id="password" name="password" type="password" autocomplete="current-password" /></label>
+
+        <p id="security-note" class="note"></p>
+        <p id="error" class="error" role="alert"></p>
+
+        <footer>
+          <button id="cancel" type="button" class="secondary">Cancel</button>
+          <button id="save" type="submit">Connect</button>
+        </footer>
+      </form>
+    </main>
+    <script src="settings.js"></script>
+  </body>
+</html>

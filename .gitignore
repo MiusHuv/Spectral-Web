@@ -28,6 +28,7 @@ MANIFEST
 # Virtual environments
 venv/
 .venv/
+.venv-desktop/
 env/
 ENV/
 env.bak/
@@ -113,6 +114,9 @@ jspm_packages/
 # Nuxt.js build / generate output
 .nuxt
 dist
+release/
+desktop/release/
+backend/build/pyinstaller/
 
 # Gatsby files
 .cache/

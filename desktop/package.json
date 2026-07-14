@@ -1,0 +1,66 @@
+{
+  "name": "spectral-web-desktop",
+  "version": "1.0.0",
+  "description": "Installable desktop application for asteroid and meteorite spectral exploration",
+  "main": "src/main.cjs",
+  "author": "MiusHuv",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "43.1.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "io.github.miushuv.spectralweb",
+    "productName": "Spectral Web",
+    "asar": true,
+    "artifactName": "Spectral-Web-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "settings/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../frontend/dist",
+        "to": "frontend",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../backend/dist",
+        "to": "backend",
+        "filter": ["spectral-backend*"]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.education",
+      "target": ["dmg", "zip"],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "identity": null
+    },
+    "win": {
+      "target": ["nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Education",
+      "synopsis": "Asteroid and meteorite spectral explorer"
+    }
+  }
+}

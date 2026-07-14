@@ -12,7 +12,7 @@ class Config:
     DB_PORT = int(os.environ.get('DB_PORT') or 3306)
     DB_NAME = os.environ.get('DB_NAME') or 'asteroid_spectral_db'
     DB_USER = os.environ.get('DB_USER') or 'root'
-    DB_PASSWORD = os.environ.get('DB_PASSWORD') or 'bpol68'
+    DB_PASSWORD = os.environ.get('DB_PASSWORD') or ''
     
     # Connection pool settings
     DB_POOL_SIZE = int(os.environ.get('DB_POOL_SIZE') or 10)
@@ -104,10 +104,18 @@ class ProductionConfig(Config):
         syslog_handler.setLevel(logging.WARNING)
         app.logger.addHandler(syslog_handler)
 
+class DesktopConfig(Config):
+    """Configuration used by the packaged desktop sidecar."""
+    DEBUG = False
+    TESTING = False
+    CACHE_TYPE = 'simple'
+    API_RATE_LIMIT = None
+
 config = {
     'development': DevelopmentConfig,
     'testing': TestingConfig,
     'staging': StagingConfig,
     'production': ProductionConfig,
+    'desktop': DesktopConfig,
     'default': DevelopmentConfig
 }

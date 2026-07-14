@@ -1,151 +1,103 @@
-# Asteroid Spectral Visualization Web Application
+# Spectral Web
 
-A full-stack web application for exploring asteroid data organized by taxonomic classifications, viewing spectral curves, and examining orbital and physical properties.
+Spectral Web is a full-stack application for exploring asteroid and meteorite
+catalogues, inspecting spectral observations, comparing reflectance curves, and
+exporting selected scientific data. The repository supports both browser-based
+deployment and installable desktop applications for macOS, Windows, and Linux.
 
-## Technology Stack
+## What is included
 
-- **Frontend**: React 18+ with TypeScript, D3.js v7, Vite
-- **Backend**: Python Flask with Flask-CORS, Flask-RESTful
-- **Database**: MySQL (existing asteroid_spectral_db)
+- React 18, TypeScript, Vite, and D3 frontend
+- Flask REST API with pagination, validation, caching, and data export
+- MySQL-backed asteroid, observation, taxonomy, and meteorite data access
+- CSV, JSON, HDF5, and FITS conversion paths
+- Electron desktop shell with a bundled PyInstaller backend sidecar
+- Unit, integration, end-to-end, performance, and visual test suites
 
-## Project Structure
+The desktop installers bundle application code, not catalogue data. A compatible
+MySQL database is required at runtime.
 
-```
-asteroid-spectral-app/
-├── frontend/                 # React frontend application
-│   ├── src/
-│   │   ├── components/      # React components
-│   │   ├── services/        # API services
-│   │   ├── types/           # TypeScript type definitions
-│   │   └── utils/           # Utility functions
-│   ├── public/              # Static assets
-│   └── package.json
-├── backend/                 # Flask backend application
-│   ├── app/
-│   │   ├── api/            # API endpoints
-│   │   ├── services/       # Business logic services
-│   │   └── models/         # Data models
-│   ├── tests/              # Backend tests
-│   ├── app.py              # Flask application entry point
-│   ├── config.py           # Configuration management
-│   └── requirements.txt
-└── package.json            # Root package.json for development scripts
+## Repository map
+
+```text
+Spectral-Web/
+├── frontend/                 React/Vite user interface
+├── backend/                  Flask API and scientific export services
+├── desktop/                  Electron shell and installer configuration
+├── docs/                     Architecture and release documentation
+├── .github/workflows/        Test and three-platform release automation
+├── docker-compose.yml        Browser deployment stack
+└── package.json              Root development and release commands
 ```
 
-## Development Setup
+See [architecture](docs/ARCHITECTURE.md) for component responsibilities and
+[desktop release guide](docs/DESKTOP_RELEASE.md) for installer details.
 
-### Prerequisites
+## Web development
 
-- Node.js 18+ and npm
-- Python 3.8+
-- MySQL database with asteroid_spectral_db
+Prerequisites: Node.js 22, Python 3.11, and MySQL 8.
 
-### Installation
-
-1. Clone the repository and navigate to the project directory
-2. Install all dependencies:
-   ```bash
-   npm run install:all
-   ```
-
-3. Set up backend environment:
-   ```bash
-   cd backend
-   cp .env.example .env
-   # Edit .env with your database credentials
-   ```
-
-4. Create Python virtual environment (optional but recommended):
-   ```bash
-   cd backend
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-### Development
-
-**快速启动（推荐）：**
 ```bash
-./quick-start.sh
+npm ci
+(cd frontend && npm ci)
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r backend/requirements-dev.txt
 ```
 
-或使用 npm 脚本：
+Set the database environment variables before starting the services:
+
 ```bash
+export DB_HOST=127.0.0.1
+export DB_PORT=3306
+export DB_NAME=asteroid_spectral_db
+export DB_USER=asteroid_user
+export DB_PASSWORD='replace-me'
 npm run dev
 ```
 
-或分别启动：
+The frontend runs at `http://localhost:3000` and proxies API requests to the
+backend at `http://localhost:5000`.
+
+## Testing
+
 ```bash
-# Frontend (runs on http://localhost:3000)
-npm run dev:frontend
-
-# Backend (runs on http://localhost:5000)
-npm run dev:backend
-```
-
-### Testing
-
-Run all tests:
-```bash
-npm run test
-```
-
-Run tests separately:
-```bash
-# Frontend tests
 npm run test:frontend
-
-# Backend tests
 npm run test:backend
 ```
 
-### Building for Production
+Additional frontend scripts cover Cypress end-to-end tests, performance tests,
+and visual regression tests. The GitHub Actions test workflow supplies a MySQL
+service for backend and integration jobs.
 
-Build the frontend for production:
+## Production web build
+
 ```bash
 npm run build
+docker compose up --build -d
 ```
 
-## 外网访问（Ngrok）
+Provide `DB_PASSWORD` and the remaining database variables through a private
+environment file or deployment secret store.
 
-如果需要通过 ngrok 将应用暴露到外网：
+## Desktop installers
 
-### 方案一：单隧道模式（推荐）
+Build on the target operating system after installing desktop requirements:
+
 ```bash
-# 1. 启动服务（需要 Nginx）
-./start-with-ngrok-simple.sh
-
-# 2. 在另一个终端运行 ngrok
-ngrok http 8080
+(cd desktop && npm ci)
+python -m pip install -r backend/requirements-desktop.txt
+npm run desktop:dist:mac
 ```
 
-### 方案二：双隧道模式
-```bash
-# 自动启动前后端和两个 ngrok 隧道
-./start-with-ngrok.sh
-```
+Use `desktop:dist:win` on Windows and `desktop:dist:linux` on Linux. The
+`Desktop installers` GitHub Actions workflow builds all three native packages;
+tags matching `v*` also publish a GitHub release.
 
-说明：
-- 使用 `./start-with-ngrok-simple.sh` + `ngrok http 8080` 可快速开启单隧道。
-- 使用 `./start-with-ngrok.sh` 可自动启动双隧道。
+On first launch, the desktop app requests the MySQL connection. Credentials are
+stored in the platform credential service when available. macOS and Windows
+artifacts remain unsigned until publisher signing credentials are configured.
 
-## 生产部署
+## License
 
-部署说明已合并到仓库主文档与脚本，内部运维细节文档默认保留在本地（未纳入 Git）。
-
-## API Endpoints
-
-The backend will provide RESTful API endpoints for:
-- Classification data (Bus-DeMeo, Tholen)
-- Asteroid information and properties
-- Spectral data retrieval
-- Data export functionality
-
-## Contributing
-
-1. Follow the existing code style and structure
-2. Write tests for new functionality
-3. Update documentation as needed
-4. Use TypeScript for frontend development
-5. Follow Flask best practices for backend development
+The project declares the MIT license in its package metadata.
