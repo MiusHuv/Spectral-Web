@@ -8,6 +8,8 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key'
     
     # Database configuration
+    DB_ENGINE = os.environ.get('DB_ENGINE') or 'mysql'
+    DB_PATH = os.environ.get('DB_PATH') or ''
     DB_HOST = os.environ.get('DB_HOST') or '127.0.0.1'
     DB_PORT = int(os.environ.get('DB_PORT') or 3306)
     DB_NAME = os.environ.get('DB_NAME') or 'asteroid_spectral_db'
@@ -110,6 +112,7 @@ class DesktopConfig(Config):
     TESTING = False
     CACHE_TYPE = 'simple'
     API_RATE_LIMIT = None
+    DB_ENGINE = os.environ.get('DB_ENGINE') or 'sqlite'
 
 config = {
     'development': DevelopmentConfig,

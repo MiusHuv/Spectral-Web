@@ -9,13 +9,14 @@ deployment and installable desktop applications for macOS, Windows, and Linux.
 
 - React 18, TypeScript, Vite, and D3 frontend
 - Flask REST API with pagination, validation, caching, and data export
-- MySQL-backed asteroid, observation, taxonomy, and meteorite data access
+- SQLite/MySQL asteroid, observation, taxonomy, and meteorite data access
 - CSV, JSON, HDF5, and FITS conversion paths
 - Electron desktop shell with a bundled PyInstaller backend sidecar
 - Unit, integration, end-to-end, performance, and visual test suites
 
-The desktop installers bundle application code, not catalogue data. A compatible
-MySQL database is required at runtime.
+Desktop installers include a read-only SQLite catalogue snapshot and run without
+MySQL, Docker, network access, database credentials, or administrator-managed
+services. The browser deployment continues to use MySQL for shared data.
 
 ## Repository map
 
@@ -82,7 +83,8 @@ environment file or deployment secret store.
 
 ## Desktop installers
 
-Build on the target operating system after installing desktop requirements:
+Generate or download `desktop/data/spectral.sqlite3`, then build on the target
+operating system after installing desktop requirements:
 
 ```bash
 (cd desktop && npm ci)
@@ -94,9 +96,11 @@ Use `desktop:dist:win` on Windows and `desktop:dist:linux` on Linux. The
 `Desktop installers` GitHub Actions workflow builds all three native packages;
 tags matching `v*` also publish a GitHub release.
 
-On first launch, the desktop app requests the MySQL connection. Credentials are
-stored in the platform credential service when available. macOS and Windows
-artifacts remain unsigned until publisher signing credentials are configured.
+The desktop app uses the bundled SQLite snapshot automatically. An advanced menu
+option can connect to an external MySQL service when a shared live catalogue is
+required; credentials are stored in the platform credential service when
+available. macOS and Windows artifacts remain unsigned until publisher signing
+credentials are configured.
 
 ## License
 

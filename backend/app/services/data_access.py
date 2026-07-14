@@ -700,7 +700,6 @@ class DataAccessLayer:
                     COUNT(o.id) as has_spectral_data
                 FROM asteroids a
                 LEFT JOIN observations o ON a.id = o.asteroid_id AND o.spectral_data IS NOT NULL AND (UPPER(o.band) LIKE 'VNIR%' OR UPPER(o.band) LIKE 'NIR%')
-                LEFT JOIN observations o ON a.id = o.asteroid_id AND o.spectral_data IS NOT NULL AND (UPPER(o.band) LIKE 'VNIR%' OR UPPER(o.band) LIKE 'NIR%')
                 WHERE 
                     a.proper_name LIKE %s OR
                     a.provisional_designation LIKE %s OR

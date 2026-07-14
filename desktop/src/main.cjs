@@ -44,10 +44,19 @@ function decryptPassword(value) {
   }
 }
 
+function configuredEngine() {
+  return String(
+    process.env.SPECTRAL_DB_ENGINE || readStoredSettings().engine || 'sqlite'
+  ).toLowerCase();
+}
+
 function loadSettings() {
   const stored = readStoredSettings();
+  const engine = configuredEngine();
 
   return {
+    engine,
+    path: process.env.SPECTRAL_DB_PATH || embeddedDatabasePath(),
     host: process.env.SPECTRAL_DB_HOST || stored.host || defaultSettings.host,
     port: Number(process.env.SPECTRAL_DB_PORT || stored.port || defaultSettings.port),
     name: process.env.SPECTRAL_DB_NAME || stored.name || defaultSettings.name,
@@ -57,6 +66,9 @@ function loadSettings() {
 }
 
 function settingsAreReady() {
+  if (configuredEngine() === 'sqlite') {
+    return true;
+  }
   const hasEnvironmentConfig = Object.keys(process.env)
     .some((key) => key.startsWith('SPECTRAL_DB_'));
   if (hasEnvironmentConfig) return true;
@@ -82,6 +94,7 @@ function saveSettings(settings) {
 
   sessionPassword = normalized.password;
   const persisted = {
+    engine: 'mysql',
     host: normalized.host,
     port: normalized.port,
     name: normalized.name,
@@ -96,6 +109,20 @@ function saveSettings(settings) {
   fs.mkdirSync(path.dirname(settingsPath()), { recursive: true });
   fs.writeFileSync(settingsPath(), `${JSON.stringify(persisted, null, 2)}\n`, { mode: 0o600 });
   return normalized;
+}
+
+function useEmbeddedDatabase() {
+  if (process.env.SPECTRAL_DB_ENGINE) {
+    dialog.showErrorBox(
+      'Database mode is managed externally',
+      'SPECTRAL_DB_ENGINE is set in the environment and cannot be changed from the application menu.'
+    );
+    return;
+  }
+  const persisted = { ...readStoredSettings(), engine: 'sqlite' };
+  fs.mkdirSync(path.dirname(settingsPath()), { recursive: true });
+  fs.writeFileSync(settingsPath(), `${JSON.stringify(persisted, null, 2)}\n`, { mode: 0o600 });
+  setImmediate(startApplication);
 }
 
 function findFreePort() {
@@ -121,6 +148,13 @@ function backendExecutable() {
   return { command: path.join(process.resourcesPath, 'backend', filename), args: [] };
 }
 
+function embeddedDatabasePath() {
+  if (!app.isPackaged) {
+    return path.join(__dirname, '../data/spectral.sqlite3');
+  }
+  return path.join(process.resourcesPath, 'data', 'spectral.sqlite3');
+}
+
 function logBackend(data) {
   const logFile = path.join(app.getPath('userData'), 'backend.log');
   fs.appendFileSync(logFile, data);
@@ -128,9 +162,14 @@ function logBackend(data) {
 
 function startBackend(settings) {
   const executable = backendExecutable();
+  if (settings.engine === 'sqlite' && !fs.existsSync(settings.path)) {
+    throw new Error(`Bundled SQLite database is missing: ${settings.path}`);
+  }
   const env = {
     ...process.env,
     FLASK_ENV: 'desktop',
+    DB_ENGINE: settings.engine,
+    DB_PATH: settings.path,
     DB_HOST: settings.host,
     DB_PORT: String(settings.port),
     DB_NAME: settings.name,
@@ -342,11 +381,14 @@ async function startApplication() {
     if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.close();
   } catch (error) {
     logBackend(`Startup failure: ${error.stack || error}\n`);
+    const sqliteMode = configuredEngine() === 'sqlite';
     dialog.showErrorBox(
       'Spectral Web could not start',
-      'The configured MySQL server could not be reached or rejected the credentials. Check Database Settings, then try again. Detailed diagnostics were written to backend.log in the application data directory.'
+      sqliteMode
+        ? 'The embedded spectral database is missing or could not be opened. Reinstall the complete application package. Detailed diagnostics were written to backend.log in the application data directory.'
+        : 'The configured MySQL server could not be reached or rejected the credentials. Check Database Settings, then try again. Detailed diagnostics were written to backend.log in the application data directory.'
     );
-    openSettings();
+    if (!sqliteMode) openSettings();
   } finally {
     starting = false;
   }
@@ -356,7 +398,13 @@ function installMenu() {
   const template = [{
     label: process.platform === 'darwin' ? app.name : 'File',
     submenu: [
-      { label: 'Database Settings...', click: openSettings },
+      {
+        label: 'Database',
+        submenu: [
+          { label: 'Use Embedded Database', click: useEmbeddedDatabase },
+          { label: 'Connect to External MySQL...', click: openSettings }
+        ]
+      },
       { type: 'separator' },
       process.platform === 'darwin' ? { role: 'quit' } : { role: 'close' }
     ]

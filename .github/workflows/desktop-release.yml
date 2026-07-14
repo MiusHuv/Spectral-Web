@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+env:
+  SPECTRAL_DATA_TAG: spectral-data-v1
+  SPECTRAL_DATA_SHA256: 7fafe0fc5835d68c6b895349b95fe9e394f247328962748f8c90a5bafd422b16
+
 jobs:
   build:
     name: ${{ matrix.label }}
@@ -61,6 +65,19 @@ jobs:
 
       - name: Install backend packaging dependencies
         run: python -m pip install -r backend/requirements-desktop.txt
+
+      - name: Download embedded spectral database
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p desktop/data
+          gh release download "$SPECTRAL_DATA_TAG" --pattern spectral.sqlite3.zst --dir desktop/data
+          python -m pip install zstandard==0.23.0
+          python backend/scripts/unpack_sqlite_snapshot.py \
+            --input desktop/data/spectral.sqlite3.zst \
+            --output desktop/data/spectral.sqlite3 \
+            --sha256 "$SPECTRAL_DATA_SHA256"
 
       - name: Build frontend
         working-directory: frontend

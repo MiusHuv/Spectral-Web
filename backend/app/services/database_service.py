@@ -5,6 +5,8 @@ Integrates existing database utilities with Flask application context.
 import ast
 import json
 import logging
+import os
+import sqlite3
 import time
 from typing import Optional, Dict, Any, List
 from flask import current_app
@@ -22,8 +24,26 @@ class DatabaseManager:
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config or {}
+        self.engine = str(self.config.get('engine', 'mysql')).lower()
+        if self.engine not in {'mysql', 'sqlite'}:
+            raise ValueError(f"Unsupported database engine: {self.engine}")
 
     def _connect(self):
+        if self.engine == 'sqlite':
+            database_path = os.path.abspath(os.path.expanduser(self.config.get('path', '')))
+            if not database_path or not os.path.isfile(database_path):
+                raise ConnectionError(f"SQLite database not found: {database_path or '<unset>'}")
+            connection = sqlite3.connect(
+                f"file:{database_path}?mode=ro",
+                uri=True,
+                timeout=int(self.config.get('connect_timeout', 5)),
+                check_same_thread=False,
+            )
+            connection.row_factory = sqlite3.Row
+            connection.execute('PRAGMA query_only = ON')
+            connection.execute('PRAGMA foreign_keys = ON')
+            return connection
+
         host = self.config.get('host', '127.0.0.1')
         if host in ('localhost', '::1'):
             # Prefer TCP loopback to avoid environment-specific socket resolution issues.
@@ -57,15 +77,20 @@ class DatabaseManager:
 
     def execute_query(self, query: str, params: Optional[tuple] = None) -> pd.DataFrame:
         conn = self._connect()
+        cursor = None
         try:
-            with conn.cursor() as cursor:
-                cursor.execute(query, params or ())
-                rows = cursor.fetchall()
-                columns = [desc[0] for desc in (cursor.description or [])]
+            if self.engine == 'sqlite':
+                query = query.replace('%s', '?')
+            cursor = conn.cursor()
+            cursor.execute(query, params or ())
+            rows = cursor.fetchall()
+            columns = [desc[0] for desc in (cursor.description or [])]
             if not columns:
                 return pd.DataFrame()
             return pd.DataFrame(list(rows), columns=columns)
         finally:
+            if cursor is not None:
+                cursor.close()
             conn.close()
 
 
@@ -180,10 +205,12 @@ class FlaskDatabaseService:
             # Build database configuration from Flask config
             self._config = {
                 'database': {
+                    'engine': app.config.get('DB_ENGINE', 'mysql'),
+                    'path': app.config.get('DB_PATH', ''),
                     'host': app.config.get('DB_HOST', '127.0.0.1'),
                     'port': app.config.get('DB_PORT', 3306),
                     'user': app.config.get('DB_USER', 'root'),
-                    'password': app.config.get('DB_PASSWORD', 'bpol68'),
+                    'password': app.config.get('DB_PASSWORD', ''),
                     'database': app.config.get('DB_NAME', 'asteroid_spectral_db'),
                     'pool_size': app.config.get('DB_POOL_SIZE', 10),
                     'charset': 'utf8mb4',
@@ -219,7 +246,7 @@ class FlaskDatabaseService:
                             a.aphelion_distance,
                             a.diameter,
                             a.albedo,
-                            a.rotation_period,
+                            a.rot_per AS rotation_period,
                             a.density,
                             o.spectral_data
                         FROM observations o 
@@ -231,13 +258,16 @@ class FlaskDatabaseService:
                 }
             }
             db_cfg = self._config['database']
-            logger.info(
-                "Database target configured: %s:%s/%s (user=%s)",
-                db_cfg.get('host'),
-                db_cfg.get('port'),
-                db_cfg.get('database'),
-                db_cfg.get('user')
-            )
+            if db_cfg.get('engine') == 'sqlite':
+                logger.info("SQLite database configured: %s", db_cfg.get('path'))
+            else:
+                logger.info(
+                    "MySQL database configured: %s:%s/%s (user=%s)",
+                    db_cfg.get('host'),
+                    db_cfg.get('port'),
+                    db_cfg.get('database'),
+                    db_cfg.get('user')
+                )
             
             # Initialize database manager
             self.db_manager = DatabaseManager(self._config['database'])

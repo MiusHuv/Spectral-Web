@@ -116,6 +116,8 @@ jspm_packages/
 dist
 release/
 desktop/release/
+desktop/data/*.sqlite3
+desktop/data/*.sqlite3-*
 backend/build/pyinstaller/
 
 # Gatsby files

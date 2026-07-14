@@ -44,6 +44,10 @@
         "from": "../backend/dist",
         "to": "backend",
         "filter": ["spectral-backend*"]
+      },
+      {
+        "from": "data/spectral.sqlite3",
+        "to": "data/spectral.sqlite3"
       }
     ],
     "mac": {

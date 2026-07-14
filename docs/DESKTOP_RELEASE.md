@@ -21,6 +21,8 @@ Install Node.js 22 and Python 3.11, then run:
 (cd frontend && npm ci --ignore-scripts)
 (cd desktop && npm ci)
 python -m pip install -r backend/requirements-desktop.txt
+MYSQL_PASSWORD=... python backend/scripts/export_mysql_to_sqlite.py \
+  --output desktop/data/spectral.sqlite3
 npm run desktop:dist:mac
 ```
 
@@ -37,10 +39,20 @@ corresponding operating system. Artifacts are written to `desktop/release/`.
 
 ## Runtime configuration
 
-On first launch, the application asks for MySQL host, port, database, user, and
-password. Deployment automation may provide these environment variables instead:
+The default desktop mode opens the bundled SQLite snapshot read-only. It needs no
+database configuration and does not start a system service. Set these variables
+only to override the packaged application for controlled deployments:
 
 ```text
+SPECTRAL_DB_ENGINE=sqlite
+SPECTRAL_DB_PATH=/path/to/spectral.sqlite3
+```
+
+The application menu can switch to an external MySQL service. Deployment
+automation may configure that mode with:
+
+```text
+SPECTRAL_DB_ENGINE=mysql
 SPECTRAL_DB_HOST
 SPECTRAL_DB_PORT
 SPECTRAL_DB_NAME
@@ -48,13 +60,21 @@ SPECTRAL_DB_USER
 SPECTRAL_DB_PASSWORD
 ```
 
-The database must already contain the tables used by the API, including
-`asteroids`, `observations`, and `meteorites`.
+An external database must contain `asteroids`, `observations`, and `meteorites`.
 
 `127.0.0.1` means the computer on which the desktop application is running. A
 Windows installation on another computer must use a reachable LAN/VPN hostname
 or IP address for MySQL, and the server firewall and MySQL grants must allow that
 client. Use a dedicated least-privilege database account rather than remote root.
+
+## Snapshot release
+
+`backend/scripts/export_mysql_to_sqlite.py` copies the maintained MySQL tables,
+creates desktop indexes, records row counts and provenance metadata, validates
+foreign keys and integrity, and atomically publishes the output. Compress the
+validated file as `spectral.sqlite3.zst` and attach it to the release tag pinned
+by `.github/workflows/desktop-release.yml`. The workflow verifies the SHA-256
+checksum before every platform build.
 
 ## Signing boundary
 
