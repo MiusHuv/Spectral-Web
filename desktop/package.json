@@ -1,6 +1,6 @@
 {
   "name": "spectral-web-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Installable desktop application for asteroid and meteorite spectral exploration",
   "main": "src/main.cjs",
   "author": {
