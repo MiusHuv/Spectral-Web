@@ -3,7 +3,12 @@
   "version": "1.0.0",
   "description": "Installable desktop application for asteroid and meteorite spectral exploration",
   "main": "src/main.cjs",
-  "author": "MiusHuv",
+  "author": {
+    "name": "MiusHuv",
+    "email": "MiusHuv@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/MiusHuv/Spectral-Web",
+  "desktopName": "spectral-web.desktop",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -60,7 +65,9 @@
     "linux": {
       "target": ["AppImage", "deb"],
       "category": "Education",
-      "synopsis": "Asteroid and meteorite spectral explorer"
+      "synopsis": "Asteroid and meteorite spectral explorer",
+      "maintainer": "MiusHuv <MiusHuv@users.noreply.github.com>",
+      "syncDesktopName": true
     }
   }
 }
