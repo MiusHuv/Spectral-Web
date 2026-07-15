@@ -10,12 +10,13 @@
 }
 
 .page-header-content {
-  max-width: 1400px;
+  max-width: 1680px;
   margin: 0 auto;
   padding: 0 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
 }
 
 .page-title-section h1 {
@@ -34,6 +35,8 @@
 .page-actions {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .action-btn {
@@ -63,12 +66,12 @@
 }
 
 .page-content {
-  max-width: 1400px;
+  max-width: 1680px;
   margin: 24px auto;
   padding: 0 24px;
   display: grid;
-  grid-template-columns: 380px 1fr;
-  gap: 24px;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: clamp(16px, 2vw, 24px);
 }
 
 .filters-sidebar {
@@ -315,12 +318,22 @@ div.filter-group-title {
 /* Responsive Design */
 @media (max-width: 1200px) {
   .page-content {
-    grid-template-columns: 340px 1fr;
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
     gap: 20px;
   }
   
   .filters-sidebar {
     padding: 18px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .page-header-content {
+    align-items: flex-start;
+  }
+
+  .page-actions {
+    justify-content: flex-start;
   }
 }
 

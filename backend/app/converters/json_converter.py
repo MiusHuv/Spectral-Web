@@ -8,6 +8,7 @@ import numpy as np
 import json
 from datetime import datetime
 from .base_converter import BaseFormatConverter
+from .spectral_records import spectral_records
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -22,8 +23,10 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         elif isinstance(obj, pd.Timestamp):
             return obj.isoformat()
-        elif pd.isna(obj):
-            return None
+        else:
+            missing = pd.isna(obj)
+            if isinstance(missing, (bool, np.bool_)) and missing:
+                return None
         return super().default(obj)
 
 
@@ -120,9 +123,20 @@ class JSONConverter(BaseFormatConverter):
             List of object dictionaries
         """
         objects = []
+        spectra_by_object: Dict[str, List[Dict[str, Any]]] = {}
+        for record in spectral_records(spectral_data):
+            spectrum = {
+                'wavelengths': record['wavelengths'].tolist(),
+                'reflectance': record['reflectance'].tolist(),
+            }
+            if record['uncertainty'] is not None:
+                spectrum['uncertainty'] = record['uncertainty'].tolist()
+            if record['metadata']:
+                spectrum['observation'] = record['metadata']
+            spectra_by_object.setdefault(record['object_id'], []).append(spectrum)
         
         for _, row in data.iterrows():
-            obj = self._build_object(row, spectral_data)
+            obj = self._build_object(row, spectra_by_object)
             objects.append(obj)
         
         return objects
@@ -130,7 +144,7 @@ class JSONConverter(BaseFormatConverter):
     def _build_object(
         self,
         row: pd.Series,
-        spectral_data: Optional[Dict[str, np.ndarray]]
+        spectra_by_object: Dict[str, List[Dict[str, Any]]]
     ) -> Dict[str, Any]:
         """
         Build a single object dictionary.
@@ -162,7 +176,8 @@ class JSONConverter(BaseFormatConverter):
                 continue
             
             # Convert pandas/numpy types to JSON-serializable types
-            if pd.isna(value):
+            missing = pd.isna(value)
+            if isinstance(missing, (bool, np.bool_)) and missing:
                 obj['properties'][key] = None
             elif isinstance(value, (np.integer, np.floating)):
                 obj['properties'][key] = float(value) if isinstance(value, np.floating) else int(value)
@@ -172,54 +187,13 @@ class JSONConverter(BaseFormatConverter):
                 obj['properties'][key] = value
         
         # Add spectral data if available
-        if spectral_data and object_id:
-            spectrum = self._build_spectrum(object_id, spectral_data)
-            if spectrum:
-                obj['spectrum'] = spectrum
+        spectra = spectra_by_object.get(str(object_id), [])
+        if len(spectra) == 1:
+            obj['spectrum'] = spectra[0]
+        elif spectra:
+            obj['spectra'] = spectra
         
         return obj
-    
-    def _build_spectrum(
-        self,
-        object_id: str,
-        spectral_data: Dict[str, np.ndarray]
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Build spectrum dictionary for an object.
-        
-        Args:
-            object_id: Object identifier
-            spectral_data: Spectral data dictionary
-        
-        Returns:
-            Spectrum dictionary or None if no data available
-        """
-        reflectance_dict = spectral_data.get('reflectance', {})
-        
-        # Check if this object has spectral data
-        if object_id not in reflectance_dict:
-            return None
-        
-        spectrum = {}
-        
-        # Add wavelengths
-        if 'wavelengths' in spectral_data:
-            spectrum['wavelengths'] = spectral_data['wavelengths'].tolist()
-        
-        # Add reflectance
-        spectrum['reflectance'] = reflectance_dict[object_id].tolist()
-        
-        # Add uncertainty if available
-        uncertainty_dict = spectral_data.get('uncertainty', {})
-        if object_id in uncertainty_dict:
-            spectrum['uncertainty'] = uncertainty_dict[object_id].tolist()
-        
-        # Add observation metadata if available
-        obs_metadata = spectral_data.get('observation_metadata', {})
-        if object_id in obs_metadata:
-            spectrum['observation'] = obs_metadata[object_id]
-        
-        return spectrum
     
     def get_mime_type(self) -> str:
         """Get MIME type for JSON format."""
@@ -250,20 +224,21 @@ class JSONConverter(BaseFormatConverter):
         # Estimate object properties size (roughly 150 bytes per field per object)
         size += len(data) * len(data.columns) * 150
         
-        if spectral_data and spectral_data.get('reflectance'):
+        records = spectral_records(spectral_data)
+        if records:
             # Estimate spectral data size
             # JSON arrays are verbose: each number ~15 chars, plus formatting
-            num_objects = len(spectral_data['reflectance'])
-            wavelength_count = len(spectral_data.get('wavelengths', []))
+            num_objects = len(records)
+            wavelength_count = sum(len(record['wavelengths']) for record in records)
             
             # Wavelengths array (shared)
             size += wavelength_count * 15
             
             # Reflectance arrays (per object)
-            size += num_objects * wavelength_count * 15
+            size += wavelength_count * 15
             
             # Uncertainty arrays if present
-            if spectral_data.get('uncertainty'):
-                size += num_objects * wavelength_count * 15
+            if any(record['uncertainty'] is not None for record in records):
+                size += wavelength_count * 15
         
         return size

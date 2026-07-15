@@ -2,7 +2,8 @@
 Factory for creating format converters.
 """
 
-from typing import Dict, Type
+from importlib import import_module
+from typing import Dict
 from .base_converter import BaseFormatConverter
 
 
@@ -16,22 +17,18 @@ class FormatConverterFactory:
     
     def __init__(self):
         """Initialize the factory with available converters."""
-        self._converters: Dict[str, Type[BaseFormatConverter]] = {}
+        self._converters: Dict[str, tuple[str, str]] = {}
         self._register_converters()
     
     def _register_converters(self):
         """Register all available format converters."""
-        # Import converters here to avoid circular imports
-        from .csv_converter import CSVConverter
-        from .json_converter import JSONConverter
-        from .hdf5_converter import HDF5Converter
-        from .fits_converter import FITSConverter
-        
+        # Keep optional scientific dependencies out of unrelated exports. In
+        # particular, CSV/JSON export must not require Astropy's FITS modules.
         self._converters = {
-            'csv': CSVConverter,
-            'json': JSONConverter,
-            'hdf5': HDF5Converter,
-            'fits': FITSConverter
+            'csv': ('.csv_converter', 'CSVConverter'),
+            'json': ('.json_converter', 'JSONConverter'),
+            'hdf5': ('.hdf5_converter', 'HDF5Converter'),
+            'fits': ('.fits_converter', 'FITSConverter'),
         }
     
     def get_converter(self, format: str) -> BaseFormatConverter:
@@ -56,7 +53,14 @@ class FormatConverterFactory:
                 f"Supported formats: {supported}"
             )
         
-        converter_class = self._converters[format_lower]
+        module_name, class_name = self._converters[format_lower]
+        try:
+            module = import_module(module_name, package=__package__)
+            converter_class = getattr(module, class_name)
+        except ModuleNotFoundError as exc:
+            raise ValueError(
+                f"{format_lower.upper()} export is unavailable because a required dependency is missing."
+            ) from exc
         return converter_class()
     
     def get_supported_formats(self) -> list:

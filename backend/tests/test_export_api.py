@@ -116,6 +116,19 @@ class TestExportEndpoints:
         assert config.item_ids == ["ast_1"]
         assert config.format == "csv"
 
+    def test_export_preserves_selected_observation_ids(
+        self, client, mock_export_service, valid_request
+    ):
+        """Selected observation rows should reach the export service unchanged."""
+        request = {**valid_request, "observation_ids": ["4269"]}
+
+        with patch("app.api.export.get_export_service", return_value=mock_export_service):
+            response = client.post("/api/export/asteroids", json=request)
+
+        assert response.status_code == 200
+        config = mock_export_service.export_data.call_args.args[0]
+        assert config.observation_ids == ["4269"]
+
     def test_export_meteorites_success(self, client, mock_export_service, valid_request):
         """Meteorite export should force the meteorites data type."""
         with patch("app.api.export.get_export_service", return_value=mock_export_service):

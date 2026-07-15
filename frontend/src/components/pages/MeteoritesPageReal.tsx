@@ -477,19 +477,9 @@ const MeteoritesPageReal: React.FC = () => {
         {
             key: 'actions',
             title: 'Actions',
-            width: '200px',
+            width: '150px',
             render: (_, record) => (
                 <div className="action-links">
-                    <a
-                        href="#"
-                        className="action-link"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            navigate(`/meteorites/${record.id}`);
-                        }}
-                    >
-                        View Details
-                    </a>
                     <a
                         href="#"
                         className="action-link"

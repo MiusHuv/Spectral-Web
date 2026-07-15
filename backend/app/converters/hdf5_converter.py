@@ -7,8 +7,10 @@ import pandas as pd
 import numpy as np
 import h5py
 import io
+import json
 from datetime import datetime
 from .base_converter import BaseFormatConverter
+from .spectral_records import spectral_records
 
 
 class HDF5Converter(BaseFormatConverter):
@@ -55,8 +57,9 @@ class HDF5Converter(BaseFormatConverter):
             self._write_objects(f, data)
             
             # Create spectra group if spectral data provided
-            if spectral_data and spectral_data.get('reflectance'):
-                self._write_spectra(f, spectral_data)
+            records = spectral_records(spectral_data)
+            if records:
+                self._write_spectra(f, records, spectral_data or {})
         
         buffer.seek(0)
         return buffer.read()
@@ -149,7 +152,8 @@ class HDF5Converter(BaseFormatConverter):
     def _write_spectra(
         self,
         f: h5py.File,
-        spectral_data: Dict[str, np.ndarray]
+        records: list,
+        spectral_data: Dict[str, Any]
     ):
         """
         Write spectra group to HDF5 file.
@@ -160,68 +164,51 @@ class HDF5Converter(BaseFormatConverter):
         """
         spectra_group = f.create_group('spectra')
         
-        # Write wavelengths
-        if 'wavelengths' in spectral_data:
-            wavelengths_ds = spectra_group.create_dataset(
-                'wavelengths',
-                data=spectral_data['wavelengths'],
-                compression='gzip',
-                compression_opts=4
+        string_dtype = h5py.string_dtype(encoding='utf-8')
+        float_array_dtype = h5py.vlen_dtype(np.dtype('float64'))
+        object_ids = np.array([record['object_id'] for record in records], dtype=string_dtype)
+        observation_ids = np.array([
+            str(record['metadata'].get('observation_id', '')) for record in records
+        ], dtype=string_dtype)
+        metadata_json = np.array([
+            json.dumps(record['metadata'], ensure_ascii=False, default=str) for record in records
+        ], dtype=string_dtype)
+
+        spectra_group.create_dataset('object_ids', data=object_ids)
+        spectra_group.create_dataset('observation_ids', data=observation_ids)
+        spectra_group.create_dataset('observation_metadata', data=metadata_json)
+
+        wavelengths_ds = spectra_group.create_dataset(
+            'wavelengths', (len(records),), dtype=float_array_dtype
+        )
+        reflectance_ds = spectra_group.create_dataset(
+            'reflectance', (len(records),), dtype=float_array_dtype
+        )
+        for index, record in enumerate(records):
+            wavelengths_ds[index] = record['wavelengths']
+            reflectance_ds[index] = record['reflectance']
+
+        wavelengths_ds.attrs['units'] = 'micrometers'
+        wavelengths_ds.attrs['description'] = 'Wavelength array for each observation'
+        reflectance_ds.attrs['description'] = 'Reflectance array for each observation'
+
+        if any(record['uncertainty'] is not None for record in records):
+            uncertainty_ds = spectra_group.create_dataset(
+                'uncertainty', (len(records),), dtype=float_array_dtype
             )
-            wavelengths_ds.attrs['units'] = 'micrometers'
-            wavelengths_ds.attrs['description'] = 'Wavelength grid'
-        
-        # Prepare reflectance data as 2D array
-        reflectance_dict = spectral_data.get('reflectance', {})
-        if reflectance_dict:
-            object_ids = list(reflectance_dict.keys())
-            reflectance_arrays = [reflectance_dict[oid] for oid in object_ids]
-            
-            # Stack into 2D array (objects x wavelengths)
-            reflectance_2d = np.vstack(reflectance_arrays)
-            
-            # Write reflectance dataset
-            reflectance_ds = spectra_group.create_dataset(
-                'reflectance',
-                data=reflectance_2d,
-                compression='gzip',
-                compression_opts=4
-            )
-            reflectance_ds.attrs['description'] = 'Reflectance values (objects x wavelengths)'
-            reflectance_ds.attrs['shape'] = f'{len(object_ids)} objects x {reflectance_2d.shape[1]} wavelengths'
-            
-            # Write object IDs for indexing
-            object_ids_ds = spectra_group.create_dataset(
-                'object_ids',
-                data=np.array(object_ids, dtype=h5py.string_dtype(encoding='utf-8')),
-                compression='gzip',
-                compression_opts=4
-            )
-            object_ids_ds.attrs['description'] = 'Object IDs corresponding to reflectance rows'
-            
-            # Write uncertainty if available
-            uncertainty_dict = spectral_data.get('uncertainty', {})
-            if uncertainty_dict:
-                uncertainty_arrays = [
-                    uncertainty_dict.get(oid, np.full_like(reflectance_dict[oid], np.nan))
-                    for oid in object_ids
-                ]
-                uncertainty_2d = np.vstack(uncertainty_arrays)
-                
-                uncertainty_ds = spectra_group.create_dataset(
-                    'uncertainty',
-                    data=uncertainty_2d,
-                    compression='gzip',
-                    compression_opts=4
+            for index, record in enumerate(records):
+                uncertainty_ds[index] = (
+                    record['uncertainty']
+                    if record['uncertainty'] is not None
+                    else np.full(len(record['reflectance']), np.nan)
                 )
-                uncertainty_ds.attrs['description'] = 'Measurement uncertainty (objects x wavelengths)'
+
+        spectra_group.attrs['resolution'] = spectral_data.get('resolution', 'resampled')
         
         # Add usage instructions as group attribute
         spectra_group.attrs['usage'] = (
-            'To access spectrum for object i: '
-            'wavelengths = spectra/wavelengths[:], '
-            'reflectance = spectra/reflectance[i, :], '
-            'object_id = spectra/object_ids[i]'
+            'Record i contains object_ids[i], wavelengths[i], reflectance[i], '
+            'and observation_metadata[i].'
         )
     
     def get_mime_type(self) -> str:
@@ -254,18 +241,17 @@ class HDF5Converter(BaseFormatConverter):
         # Structured array is efficient, roughly 50 bytes per field per object
         size += len(data) * len(data.columns) * 50
         
-        if spectral_data and spectral_data.get('reflectance'):
+        records = spectral_records(spectral_data)
+        if records:
             # Wavelengths (8 bytes per value)
-            wavelength_count = len(spectral_data.get('wavelengths', []))
+            wavelength_count = sum(len(record['wavelengths']) for record in records)
+            size += wavelength_count * 8
+            num_objects = len(records)
             size += wavelength_count * 8
             
-            # Reflectance 2D array (8 bytes per value)
-            num_objects = len(spectral_data['reflectance'])
-            size += num_objects * wavelength_count * 8
-            
             # Uncertainty if present
-            if spectral_data.get('uncertainty'):
-                size += num_objects * wavelength_count * 8
+            if any(record['uncertainty'] is not None for record in records):
+                size += wavelength_count * 8
             
             # Object IDs (roughly 20 bytes per ID)
             size += num_objects * 20

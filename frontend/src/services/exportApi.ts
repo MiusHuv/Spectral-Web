@@ -18,6 +18,7 @@ export interface IncludeFields {
 
 export interface ExportConfiguration {
     itemIds: string[];
+    observationIds?: string[];
     format: 'csv' | 'json' | 'hdf5' | 'fits';
     includeFields: IncludeFields;
     spectralOptions?: SpectralOptions;
@@ -204,6 +205,7 @@ class ExportApiClient {
     private configToRequestBody(config: ExportConfiguration, dataType: 'asteroids' | 'meteorites') {
         return {
             item_ids: config.itemIds,
+            observation_ids: config.observationIds,
             format: config.format,
             include_fields: {
                 basic_info: config.includeFields.basicInfo,

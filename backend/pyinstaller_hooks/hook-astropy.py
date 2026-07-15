@@ -1,9 +1,14 @@
-"""Keep the desktop FITS dependency focused on the Astropy modules we use."""
-from PyInstaller.utils.hooks import collect_data_files
+"""Bundle the Astropy modules dynamically loaded by FITS export."""
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
-datas = collect_data_files('astropy')
-hiddenimports = [
-    'astropy.io.fits',
-    'astropy.io.fits.connect',
-    'astropy.table',
-]
+datas = collect_data_files('astropy') + collect_data_files(
+    'astropy.units.format',
+    include_py_files=True,
+    includes=['*_lextab.py', '*_parsetab.py'],
+)
+hiddenimports = (
+    collect_submodules('astropy.constants')
+    + collect_submodules('astropy.io.fits')
+    + collect_submodules('astropy.table')
+    + collect_submodules('astropy.units')
+)

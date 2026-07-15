@@ -104,6 +104,7 @@ class ExportService:
             
             # Retrieve spectral data if requested
             spectral_data = None
+            raw_spectral_files = {}
             if config.include_fields.spectral_data and config.spectral_options:
                 self._report_progress(30, "Retrieving spectral data...")
                 current_app.logger.info("Retrieving spectral data...")
@@ -115,11 +116,23 @@ class ExportService:
                         config.spectral_options
                     )
                     if spectral_data:
+                        if config.observation_ids:
+                            spectral_data = self.data_retrieval.filter_spectral_data_by_observation_ids(
+                                spectral_data, config.observation_ids
+                            )
+                            if not config.spectral_options.include_metadata:
+                                spectral_data['metadata'] = None
                         current_app.logger.info(f"Retrieved spectral data for {len(spectral_data.get('item_ids', []))} items")
                 except Exception as e:
                     current_app.logger.warning(f"Failed to retrieve spectral data: {e}. Continuing without spectral data.")
                     # Don't fail the entire export if spectral data retrieval fails
                     spectral_data = None
+
+                raw_spectral_files = self.data_retrieval.get_raw_spectral_files(
+                    config.item_ids,
+                    config.data_type,
+                    config.observation_ids,
+                )
             
             # Determine if batch export (multiple items)
             is_batch = len(config.item_ids) > 1
@@ -129,10 +142,14 @@ class ExportService:
             
             if is_batch:
                 # Create batch export with packaging
-                result = self._create_batch_export(config, data, spectral_data)
+                result = self._create_batch_export(
+                    config, data, spectral_data, raw_spectral_files
+                )
             else:
                 # Create single file export
-                result = self._create_single_export(config, data, spectral_data)
+                result = self._create_single_export(
+                    config, data, spectral_data, raw_spectral_files
+                )
             
             current_app.logger.info(f"Export complete: {result.filename} ({result.size_human_readable})")
             self._report_progress(100, "Export complete")
@@ -434,7 +451,8 @@ class ExportService:
         self,
         config: ExportConfig,
         data: pd.DataFrame,
-        spectral_data: Optional[Dict[str, np.ndarray]]
+        spectral_data: Optional[Dict[str, np.ndarray]],
+        raw_spectral_files: Optional[Dict[str, bytes]] = None,
     ) -> ExportResult:
         """
         Create single file export.
@@ -472,10 +490,25 @@ class ExportService:
             timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
             
             if is_zip:
+                content = self.packaging.append_files(content, raw_spectral_files or {})
                 # Converter returned ZIP, use .zip extension
                 extension = 'zip'
                 mime_type = 'application/zip'
                 current_app.logger.info("Single export: Converter returned ZIP package")
+            elif raw_spectral_files:
+                files = {f'export_data.{converter.get_file_extension()}': content}
+                files.update(raw_spectral_files)
+                manifest = self.packaging.generate_manifest(
+                    [{'id': item_id} for item_id in config.item_ids],
+                    {
+                        'data_type': config.data_type,
+                        'format': config.format,
+                        'observation_ids': config.observation_ids,
+                    },
+                )
+                content = self.packaging.create_package(files, manifest)
+                extension = 'zip'
+                mime_type = 'application/zip'
             else:
                 # Use converter's default extension and MIME type
                 extension = converter.get_file_extension()
@@ -500,7 +533,8 @@ class ExportService:
         self,
         config: ExportConfig,
         data: pd.DataFrame,
-        spectral_data: Optional[Dict[str, np.ndarray]]
+        spectral_data: Optional[Dict[str, np.ndarray]],
+        raw_spectral_files: Optional[Dict[str, bytes]] = None,
     ) -> ExportResult:
         """
         Create batch export with ZIP packaging and memory optimization.
@@ -522,7 +556,9 @@ class ExportService:
             
             if use_batch_processing:
                 current_app.logger.info(f"Using batch processing for {len(config.item_ids)} items")
-                return self._create_batch_export_optimized(config, data, spectral_data)
+                return self._create_batch_export_optimized(
+                    config, data, spectral_data, raw_spectral_files
+                )
             
             files = {}
             
@@ -547,6 +583,9 @@ class ExportService:
             is_already_zip = isinstance(data_content, bytes) and data_content[:4] == b'PK\x03\x04'
             
             if is_already_zip:
+                data_content = self.packaging.append_files(
+                    data_content, raw_spectral_files or {}
+                )
                 # Converter already created a complete package, return it directly
                 current_app.logger.info("Converter returned ZIP package, using it directly")
                 
@@ -579,6 +618,7 @@ class ExportService:
                     files['data.csv'] = data_content
                 else:
                     files[f'export_data.{extension}'] = data_content
+            files.update(raw_spectral_files or {})
             
             # Generate README
             readme_content = self.packaging.generate_readme(
@@ -587,7 +627,8 @@ class ExportService:
                 config.format,
                 {
                     'include_fields': config.include_fields.__dict__,
-                    'spectral_options': config.spectral_options.__dict__ if config.spectral_options else None
+                    'spectral_options': config.spectral_options.__dict__ if config.spectral_options else None,
+                    'observation_ids': config.observation_ids,
                 }
             )
             files['README.md'] = readme_content.encode('utf-8')
@@ -614,7 +655,8 @@ class ExportService:
                     'format': config.format,
                     'item_count': len(config.item_ids),
                     'include_fields': config.include_fields.__dict__,
-                    'spectral_options': config.spectral_options.__dict__ if config.spectral_options else None
+                    'spectral_options': config.spectral_options.__dict__ if config.spectral_options else None,
+                    'observation_ids': config.observation_ids,
                 }
             )
             
@@ -642,7 +684,8 @@ class ExportService:
         self,
         config: ExportConfig,
         data: pd.DataFrame,
-        spectral_data: Optional[Dict[str, np.ndarray]]
+        spectral_data: Optional[Dict[str, np.ndarray]],
+        raw_spectral_files: Optional[Dict[str, bytes]] = None,
     ) -> ExportResult:
         """
         Create batch export with memory optimization for large datasets.
@@ -682,6 +725,9 @@ class ExportService:
         is_already_zip = isinstance(data_content, bytes) and data_content[:4] == b'PK\x03\x04'
         
         if is_already_zip:
+            data_content = self.packaging.append_files(
+                data_content, raw_spectral_files or {}
+            )
             # Converter already created a complete package, return it directly
             current_app.logger.info("Converter returned ZIP package, using it directly")
             
@@ -719,6 +765,8 @@ class ExportService:
                 else:
                     zip_file.writestr(f'export_data.{extension}', data_content)
                     current_app.logger.debug(f"Added export_data.{extension} to archive")
+            for filename, content in (raw_spectral_files or {}).items():
+                zip_file.writestr(filename, content)
             
             # Clear data_content to free memory
             del data_content
@@ -731,7 +779,8 @@ class ExportService:
                 config.format,
                 {
                     'include_fields': config.include_fields.__dict__,
-                    'spectral_options': config.spectral_options.__dict__ if config.spectral_options else None
+                    'spectral_options': config.spectral_options.__dict__ if config.spectral_options else None,
+                    'observation_ids': config.observation_ids,
                 }
             )
             zip_file.writestr('README.md', readme_content.encode('utf-8'))
@@ -763,7 +812,8 @@ class ExportService:
                     'format': config.format,
                     'item_count': len(config.item_ids),
                     'include_fields': config.include_fields.__dict__,
-                    'spectral_options': config.spectral_options.__dict__ if config.spectral_options else None
+                    'spectral_options': config.spectral_options.__dict__ if config.spectral_options else None,
+                    'observation_ids': config.observation_ids,
                 }
             )
             

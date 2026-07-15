@@ -1,6 +1,6 @@
 {
   "name": "asteroid-spectral-app",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Asteroid spectral visualization web application",
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",

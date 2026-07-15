@@ -66,6 +66,42 @@ export interface ExportConfiguration {
 
 type WizardStep = 'selection' | 'format' | 'customize' | 'export';
 
+/** Convert UI/cart identifiers to the database IDs expected by the export API. */
+export function resolveExportItemIds(
+    selectedIds: string[],
+    cartItems: CartItem[],
+    dataType: 'asteroids' | 'meteorites'
+): string[] {
+    const cartById = new Map(cartItems.map((item) => [item.id, item]));
+    const resolved = selectedIds.map((selectedId) => {
+        const id = String(selectedId);
+        const item = cartById.get(id);
+
+        if (dataType === 'asteroids') {
+            if (item?.asteroidId !== undefined) return String(item.asteroidId);
+            return id.replace(/^(?:asteroid|observation)-/, '');
+        }
+
+        if (item?.meteoriteId !== undefined) return String(item.meteoriteId);
+        return id.replace(/^meteorite-/, '');
+    });
+
+    return [...new Set(resolved.filter(Boolean))];
+}
+
+/** Return observation IDs only for explicitly selected observation cart rows. */
+export function resolveExportObservationIds(
+    selectedIds: string[],
+    cartItems: CartItem[],
+    dataType: 'asteroids' | 'meteorites'
+): string[] {
+    if (dataType !== 'asteroids') return [];
+    const selected = new Set(selectedIds.map(String));
+    return cartItems
+        .filter((item) => selected.has(item.id) && item.observationId !== undefined)
+        .map((item) => String(item.observationId));
+}
+
 const ExportModal: React.FC<ExportModalProps> = ({
     isOpen,
     onClose,
@@ -113,8 +149,11 @@ const ExportModal: React.FC<ExportModalProps> = ({
     useEffect(() => {
         if (isOpen) {
             // Set preselected items if provided
-            if (preselectedItems.length > 0) {
-                setSelectedIds(preselectedItems.map(item => item.id));
+            const relevantPreselectedItems = preselectedItems.filter(
+                (item) => item.type === (dataType === 'asteroids' ? 'asteroid' : 'meteorite')
+            );
+            if (relevantPreselectedItems.length > 0) {
+                setSelectedIds(relevantPreselectedItems.map(item => item.id));
             }
             
             // Load saved preferences
@@ -276,21 +315,15 @@ const ExportModal: React.FC<ExportModalProps> = ({
                 spectralOptions: spectralOptions,
             });
             
-            // Convert observation IDs to asteroid IDs if needed
-            const processedIds = selectedIds.map(id => {
-                // If ID starts with "observation-", extract the asteroid ID from cart item
-                if (id.startsWith('observation-')) {
-                    const cartItem = cartItems.find(item => item.id === id);
-                    if (cartItem && cartItem.asteroidId) {
-                        return cartItem.asteroidId.toString();
-                    }
-                }
-                return id;
-            });
+            const processedIds = resolveExportItemIds(selectedIds, cartItems, dataType);
+            const processedObservationIds = resolveExportObservationIds(
+                selectedIds, cartItems, dataType
+            );
             
             // Prepare export configuration
             const config: ApiExportConfiguration = {
                 itemIds: processedIds,
+                observationIds: processedObservationIds,
                 format: selectedFormat,
                 includeFields: {
                     basicInfo: includeFields.basicInfo,

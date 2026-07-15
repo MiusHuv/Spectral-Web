@@ -10,6 +10,7 @@ from datetime import datetime
 from astropy.io import fits
 from astropy.table import Table
 from .base_converter import BaseFormatConverter
+from .spectral_records import spectral_records
 
 
 class FITSConverter(BaseFormatConverter):
@@ -51,19 +52,9 @@ class FITSConverter(BaseFormatConverter):
         hdu_list.append(properties_hdu)
         
         # Add spectral data HDUs if available
-        if spectral_data and spectral_data.get('reflectance'):
-            # HDU 2: Spectral data image
-            spectra_hdu = self._create_spectra_hdu(spectral_data)
-            hdu_list.append(spectra_hdu)
-            
-            # HDU 3: Wavelength table
-            wavelength_hdu = self._create_wavelength_hdu(spectral_data)
-            hdu_list.append(wavelength_hdu)
-            
-            # HDU 4: Uncertainty image (if available)
-            if spectral_data.get('uncertainty'):
-                uncertainty_hdu = self._create_uncertainty_hdu(spectral_data)
-                hdu_list.append(uncertainty_hdu)
+        records = spectral_records(spectral_data)
+        if records:
+            hdu_list.append(self._create_spectra_table_hdu(records))
         
         # Create HDU list and write to bytes
         hdul = fits.HDUList(hdu_list)
@@ -73,6 +64,42 @@ class FITSConverter(BaseFormatConverter):
         buffer.seek(0)
         
         return buffer.read()
+
+    def _create_spectra_table_hdu(self, records: list) -> fits.BinTableHDU:
+        """Create a variable-length table that also supports original grids."""
+        object_ids = np.array([record['object_id'] for record in records])
+        observation_ids = np.array([
+            str(record['metadata'].get('observation_id', '')) for record in records
+        ])
+        data_sources = np.array([
+            str(record['metadata'].get('data_source', '')) for record in records
+        ])
+        columns = [
+            fits.Column(name='OBJECT_ID', format='50A', array=object_ids),
+            fits.Column(name='OBS_ID', format='50A', array=observation_ids),
+            fits.Column(name='DATA_SRC', format='120A', array=data_sources),
+            fits.Column(
+                name='WAVELENGTH', format='PD()', unit='micrometer',
+                array=np.array([record['wavelengths'] for record in records], dtype=object),
+            ),
+            fits.Column(
+                name='REFLECTANCE', format='PD()',
+                array=np.array([record['reflectance'] for record in records], dtype=object),
+            ),
+        ]
+        if any(record['uncertainty'] is not None for record in records):
+            columns.append(fits.Column(
+                name='UNCERTAINTY', format='PD()',
+                array=np.array([
+                    record['uncertainty']
+                    if record['uncertainty'] is not None
+                    else np.full(len(record['reflectance']), np.nan)
+                    for record in records
+                ], dtype=object),
+            ))
+        hdu = fits.BinTableHDU.from_columns(columns, name='SPECTRA')
+        hdu.header['COMMENT'] = 'One row per spectral observation'
+        return hdu
     
     def _create_primary_hdu(
         self,
@@ -314,20 +341,21 @@ class FITSConverter(BaseFormatConverter):
         # Properties table (roughly 100 bytes per field per object)
         size += len(data) * len(data.columns) * 100
         
-        if spectral_data and spectral_data.get('reflectance'):
+        records = spectral_records(spectral_data)
+        if records:
             # Spectral image HDU
-            num_objects = len(spectral_data['reflectance'])
-            wavelength_count = len(spectral_data.get('wavelengths', []))
+            num_objects = len(records)
+            wavelength_count = sum(len(record['wavelengths']) for record in records)
             
             # Image data (8 bytes per pixel for float64)
-            size += num_objects * wavelength_count * 8
+            size += wavelength_count * 8
             
             # Wavelength table
-            size += wavelength_count * 20
+            size += wavelength_count * 8
             
             # Uncertainty image if present
-            if spectral_data.get('uncertainty'):
-                size += num_objects * wavelength_count * 8
+            if any(record['uncertainty'] is not None for record in records):
+                size += wavelength_count * 8
             
             # Additional headers
             size += 2880 * 3

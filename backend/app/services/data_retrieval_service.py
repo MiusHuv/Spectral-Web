@@ -10,6 +10,8 @@ import numpy as np
 import json
 import logging
 import hashlib
+from pathlib import Path
+import re
 from datetime import datetime, timedelta
 from functools import lru_cache
 
@@ -37,6 +39,11 @@ class DataRetrievalService:
         # Initialize cache for spectral data
         self._spectral_cache: Dict[str, Dict[str, Any]] = {}
         self._cache_timestamps: Dict[str, datetime] = {}
+
+    @staticmethod
+    def _normalize_asteroid_ids(asteroid_ids: List[str]) -> List[str]:
+        """Accept cart-style asteroid IDs while querying the numeric database key."""
+        return [str(item_id).removeprefix('asteroid-') for item_id in asteroid_ids]
     
     def get_asteroid_data(
         self,
@@ -57,6 +64,8 @@ class DataRetrievalService:
         """
         if not asteroid_ids:
             return pd.DataFrame()
+
+        asteroid_ids = self._normalize_asteroid_ids(asteroid_ids)
         
         try:
             logger.info(f"Retrieving asteroid data for {len(asteroid_ids)} items")
@@ -230,6 +239,121 @@ class DataRetrievalService:
         except Exception as e:
             logger.error(f"Error retrieving spectral data: {e}")
             raise
+
+    def filter_spectral_data_by_observation_ids(
+        self,
+        spectral_data: Dict[str, Any],
+        observation_ids: List[str]
+    ) -> Dict[str, Any]:
+        """Keep only explicitly selected asteroid observations."""
+        if not observation_ids or not spectral_data:
+            return spectral_data
+
+        selected = {str(value) for value in observation_ids}
+        metadata = spectral_data.get('metadata') or []
+        indices = [
+            index for index, item in enumerate(metadata)
+            if str(item.get('observation_id')) in selected
+        ]
+
+        filtered = dict(spectral_data)
+        filtered['item_ids'] = [spectral_data.get('item_ids', [])[i] for i in indices]
+        filtered['metadata'] = [metadata[i] for i in indices]
+
+        for key in ('reflectance', 'uncertainty'):
+            values = spectral_data.get(key)
+            if values is None:
+                filtered[key] = None
+            elif isinstance(values, np.ndarray):
+                filtered[key] = values[indices]
+            else:
+                filtered[key] = [values[i] for i in indices]
+
+        wavelengths = spectral_data.get('wavelengths', [])
+        if spectral_data.get('resolution') == 'original':
+            filtered['wavelengths'] = [wavelengths[i] for i in indices]
+        else:
+            filtered['wavelengths'] = wavelengths
+        return filtered
+
+    def get_raw_spectral_files(
+        self,
+        item_ids: List[str],
+        data_type: str,
+        observation_ids: Optional[List[str]] = None
+    ) -> Dict[str, bytes]:
+        """Reconstruct source-named text files from stored original arrays."""
+        if not item_ids:
+            return {}
+
+        if data_type == 'asteroids':
+            clean_ids = self._normalize_asteroid_ids(item_ids)
+            item_placeholders = ','.join(['%s'] * len(clean_ids))
+            params: List[str] = list(clean_ids)
+            observation_clause = ''
+            if observation_ids:
+                observation_placeholders = ','.join(['%s'] * len(observation_ids))
+                observation_clause = f' AND o.id IN ({observation_placeholders})'
+                params.extend(str(value) for value in observation_ids)
+            query = f"""
+                SELECT o.id AS observation_id, o.data_source AS source_name, o.spectral_data
+                FROM observations o
+                WHERE o.asteroid_id IN ({item_placeholders})
+                  AND o.spectral_data IS NOT NULL
+                  {observation_clause}
+                ORDER BY o.asteroid_id, o.id
+            """
+        else:
+            clean_ids = [str(value).removeprefix('meteorite-') for value in item_ids]
+            item_placeholders = ','.join(['%s'] * len(clean_ids))
+            params = list(clean_ids)
+            query = f"""
+                SELECT id AS observation_id, file_name AS source_name, spectral_data
+                FROM meteorites
+                WHERE id IN ({item_placeholders}) AND spectral_data IS NOT NULL
+                ORDER BY id
+            """
+
+        rows = self.db_service.execute_query(query, tuple(params), use_cache=False)
+        if rows is None or rows.empty:
+            return {}
+
+        files: Dict[str, bytes] = {}
+        for _, row in rows.iterrows():
+            try:
+                payload = json.loads(str(row['spectral_data']))
+            except (TypeError, ValueError, json.JSONDecodeError):
+                continue
+
+            wavelengths = payload.get('wavelengths', payload.get('wavelength', []))
+            reflectance = payload.get('reflectance', payload.get('reflectances', []))
+            uncertainty = payload.get('uncertainty')
+            point_count = min(len(wavelengths), len(reflectance))
+            if point_count == 0:
+                continue
+
+            source_name = Path(str(row.get('source_name') or '')).name
+            source_name = re.sub(r'[^A-Za-z0-9._-]', '_', source_name)
+            if not source_name:
+                source_name = f"observation_{row['observation_id']}.txt"
+            elif Path(source_name).suffix.lower() not in {'.txt', '.tab'}:
+                source_name = f'{source_name}.txt'
+            if source_name in files:
+                source_path = Path(source_name)
+                source_name = (
+                    f"{source_path.stem}_obs{row['observation_id']}{source_path.suffix or '.txt'}"
+                )
+
+            lines = []
+            has_uncertainty = isinstance(uncertainty, list) and len(uncertainty) >= point_count
+            for index in range(point_count):
+                values = [wavelengths[index], reflectance[index]]
+                if has_uncertainty:
+                    values.append(uncertainty[index])
+                lines.append('\t'.join(format(float(value), '.15g') for value in values))
+            files[source_name] = ('\n'.join(lines) + '\n').encode('utf-8')
+
+        return {f'original_data/{name}': content for name, content in files.items()}
     
     def _generate_cache_key(
         self,
@@ -427,6 +551,8 @@ class DataRetrievalService:
         options: SpectralOptions
     ) -> Dict[str, Any]:
         """Retrieve spectral data for asteroids."""
+        asteroid_ids = self._normalize_asteroid_ids(asteroid_ids)
+
         # Convert string IDs to integers
         int_ids = [int(id_str) for id_str in asteroid_ids]
         
@@ -468,16 +594,18 @@ class DataRetrievalService:
                         reflectance_list.append(refl)
                         valid_ids.append(str(spectrum['asteroid_id']))
                         
-                        # Add metadata if requested
+                        observation_metadata = {
+                            'item_id': str(spectrum['asteroid_id']),
+                            'observation_id': spectrum['metadata'].get('observation_id'),
+                        }
                         if options.include_metadata:
-                            metadata_list.append({
-                                'item_id': str(spectrum['asteroid_id']),
-                                'observation_id': spectrum['metadata'].get('observation_id'),
+                            observation_metadata.update({
                                 'observation_date': spectrum['metadata'].get('observation_date'),
                                 'data_source': spectrum['metadata'].get('data_source'),
                                 'band': spectrum['metadata'].get('band'),
-                                'mission': spectrum['metadata'].get('mission')
+                                'mission': spectrum['metadata'].get('mission'),
                             })
+                        metadata_list.append(observation_metadata)
             
             # For original data, return list of arrays (not a 2D matrix)
             result = {
@@ -515,16 +643,18 @@ class DataRetrievalService:
                         reflectance_list.append(reflectances)
                         valid_ids.append(str(spectrum['asteroid_id']))
                         
-                        # Add metadata if requested
+                        observation_metadata = {
+                            'item_id': str(spectrum['asteroid_id']),
+                            'observation_id': spectrum['metadata'].get('observation_id'),
+                        }
                         if options.include_metadata:
-                            metadata_list.append({
-                                'item_id': str(spectrum['asteroid_id']),
-                                'observation_id': spectrum['metadata'].get('observation_id'),
+                            observation_metadata.update({
                                 'observation_date': spectrum['metadata'].get('observation_date'),
                                 'data_source': spectrum['metadata'].get('data_source'),
                                 'band': spectrum['metadata'].get('band'),
-                                'mission': spectrum['metadata'].get('mission')
+                                'mission': spectrum['metadata'].get('mission'),
                             })
+                        metadata_list.append(observation_metadata)
             
             # Convert to 2D array
             if reflectance_list:
@@ -537,7 +667,7 @@ class DataRetrievalService:
             'reflectance': reflectance_array,
             'uncertainty': None,  # Not available in current schema
             'item_ids': valid_ids,
-            'metadata': metadata_list if options.include_metadata else None
+            'metadata': metadata_list if metadata_list else None
         }
         
         return result

@@ -92,6 +92,17 @@ def validate_export_request(data: Dict[str, Any]) -> tuple:
             }),
             400,
         )
+
+    observation_ids = data.get('observation_ids', [])
+    if not isinstance(observation_ids, list):
+        return False, (
+            jsonify({
+                'error': 'Validation Error',
+                'message': 'observation_ids must be an array',
+                'details': {'field': 'observation_ids', 'reason': 'Must be an array'}
+            }),
+            400,
+        )
     
     # Validate item count
     if len(item_ids) > 1000:

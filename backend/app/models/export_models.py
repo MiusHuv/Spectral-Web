@@ -89,6 +89,9 @@ class ExportConfig:
     
     spectral_options: Optional[SpectralOptions] = None
     """Optional spectral data configuration."""
+
+    observation_ids: List[str] = field(default_factory=list)
+    """Optional asteroid observation IDs selected explicitly in the UI."""
     
     def validate(self) -> bool:
         """
@@ -160,7 +163,8 @@ class ExportConfig:
             data_type=data.get('data_type', 'asteroids'),
             format=data.get('format', 'csv'),
             include_fields=include_fields,
-            spectral_options=spectral_options
+            spectral_options=spectral_options,
+            observation_ids=[str(value) for value in data.get('observation_ids', [])],
         )
 
 

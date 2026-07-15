@@ -8,7 +8,19 @@ a = Analysis(
     pathex=[str(backend_dir)],
     binaries=[],
     datas=[],
-    hiddenimports=['astropy.io.fits', 'flask_restful', 'h5py', 'pandas'],
+    # FormatConverterFactory imports converters lazily so CSV exports do not
+    # load FITS/Astropy. PyInstaller cannot discover those string-based
+    # imports statically, therefore keep the converter modules explicit.
+    hiddenimports=[
+        'app.converters.csv_converter',
+        'app.converters.json_converter',
+        'app.converters.hdf5_converter',
+        'app.converters.fits_converter',
+        'astropy.io.fits',
+        'flask_restful',
+        'h5py',
+        'pandas',
+    ],
     hookspath=[str(backend_dir / 'pyinstaller_hooks')],
     hooksconfig={},
     runtime_hooks=[],

@@ -19,7 +19,11 @@ const DataSelectionPanel: React.FC<DataSelectionPanelProps> = ({
     selectedIds,
     onSelectionChange
 }) => {
-    const [selectionMode, setSelectionMode] = useState<SelectionMode>('cart');
+    const [selectionMode, setSelectionMode] = useState<SelectionMode>(
+        () => cartItems.some(item => item.type === (dataType === 'asteroids' ? 'asteroid' : 'meteorite'))
+            ? 'cart'
+            : 'results'
+    );
     const [searchQuery, setSearchQuery] = useState('');
 
     // Filter cart items by data type

@@ -43,6 +43,18 @@ class PackagingService:
         
         zip_buffer.seek(0)
         return zip_buffer.getvalue()
+
+    def append_files(self, package: bytes, files: Dict[str, bytes]) -> bytes:
+        """Append files to an existing in-memory ZIP archive."""
+        if not files:
+            return package
+        zip_buffer = io.BytesIO(package)
+        with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED) as zip_file:
+            existing = set(zip_file.namelist())
+            for filename, content in files.items():
+                if filename not in existing:
+                    zip_file.writestr(filename, content)
+        return zip_buffer.getvalue()
     
     def generate_readme(
         self,
@@ -77,6 +89,14 @@ class PackagingService:
 ## File Structure
 
 This export package contains the following files:
+
+"""
+
+        if config.get('include_fields', {}).get('spectral_data'):
+            readme += """### Original Observation Files
+
+- `original_data/`: Source-named tab-delimited files containing wavelength,
+  reflectance, and uncertainty when available.
 
 """
         
